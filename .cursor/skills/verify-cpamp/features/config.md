@@ -1,6 +1,6 @@
 # 配置面板
 
-配置面板以可视化方式、源 YAML，以及（可用时）Manager Server 连接设置编辑 CPA 配置。
+配置面板用 Visual/Source 编辑 CPA `config.yaml`；Manager 页签（demo 常在）管理 Manager Server 与 CPA 的连接，不直接编辑整份 CPA YAML。
 
 ## Sub-features
 
@@ -31,5 +31,5 @@ Preconditions:
 
 ## Gotchas
 
-- 未保存的 source 编辑可能阻止切换页签。切换前先丢弃或保存。
+- 切换页签通常不因 dirty 单独拦截；无效 YAML、过期快照+dirty，或保存中禁用页签才会拦。切换前先处理这些状态。
 - 在 live CPA 上保存配置会改运行时配置。写证明使用一次性实例。

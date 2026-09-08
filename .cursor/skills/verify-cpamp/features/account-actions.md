@@ -6,12 +6,12 @@
 
 - `account-actions-open` 打开鉴权问题工作区。
 - `account-actions-empty-or-list` 显示问题列表或空态。
-- `account-actions-back-context` 可从 monitoring 或账户诊断相关流程到达。
+- `account-actions-back-context` 可从 monitoring 动作栏或配置策略区到达；账户诊断页只内嵌候选，不导航到本页。
 
 ## How to get to it (user POV)
 
 - 打开 `#/demo/monitoring/account-actions`。
-- 使用 monitoring 或账户诊断中展示的 auth issues 相关站内链接。
+- 使用 monitoring 动作栏或配置里的 auth issues 站内链接（页面有 `Back to Monitoring`）。
 
 ## Driving it with control-cpamp
 

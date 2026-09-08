@@ -70,7 +70,7 @@ $CTRL screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_
 | Nav links | `Dashboard`, `Usage Analytics`, `Request Monitor`, `Logs Viewer`, `Plugins`, `Config Panel`, `AI Providers`, `Credential Management`, `OAuth Login`, `System Info` |
 | Header controls | `Refresh All`, `Language`, `Theme`, `Visual effects`, `Logout` |
 | Accounts views | tabs `Credential List`, `Health Inspection`, `OAuth Configuration` |
-| Monitoring data tabs | `Accounts`, `Client Keys`, `Realtime` |
+| Monitoring data tabs | `Accounts`, `Keys`, `Realtime` |
 | Config tabs | `Visual Editor`, `Source File Editor`, `CPA Manager Plus Configuration` |
 | Plugin tabs | `Installed`, `Plugin Store` |
 

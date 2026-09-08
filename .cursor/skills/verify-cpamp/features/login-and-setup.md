@@ -23,8 +23,8 @@ Preconditions:
 - 持有该实例对应的 Admin Key 或 CPA Management Key。
 - 仅 demo launch 不够。没有 live backend 时，把本 feature 标为 `verified-unreachable`。
 
-- **打开登录。** 导航到 live 面板登录 hash。对一次性主机执行 `control-cpamp goto --url 'http://127.0.0.1:18317/management.html#/login'`。表单显示 `Connect` 或 `Login` 与凭证字段。
-- **CPA Panel 连接。** 填写 management key 并选择 `Connect` 或 `Login`。执行 `control-cpamp fill --name 'Management Key:' --value '<key>'`，再执行 `control-cpamp click --role button --name 'Connect'`。受保护 shell 出现。
+- **打开登录。** 导航到 live 面板登录 hash。对一次性主机执行 `control-cpamp goto --url 'http://127.0.0.1:18317/management.html#/login'`。表单显示 `Login` 与凭证字段（CPA Panel 为 `CPA Management Key`）。
+- **CPA Panel 连接。** 填写 management key 并选择 `Login`。执行 `control-cpamp fill --name 'CPA Management Key' --value '<key>'`，再执行 `control-cpamp click --role button --name 'Login'`。受保护 shell 出现。
 - **Manager setup。** 在首次 Manager Server 上，按标签完成 Admin Key、CPA Connection、CPA Management Key、monitoring、polling、review，然后提交。shell 打开到 Dashboard。
 - **校验失败。** 提交空必填字段。页面显示必填错误并停留在登录或 setup。
 - **证明。** 登录成功后捕获 shell。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/login.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/login.png`。产物显示已认证导航 shell，而不是登录表单。
@@ -32,5 +32,5 @@ Preconditions:
 ## Gotchas
 
 - Demo 模式绕过登录。`#/demo` 不能证明 `#/login`。
-- Manager Server 使用 `Admin Key`。CPA Panel 使用 `CPA Management Key` 或 `Management Key:`。断言当前模式实际显示的标签。
+- Manager Server 使用 `Admin Key`。CPA Panel 使用 `CPA Management Key`。Manager setup 步骤标签为 `CPA Key` / `Request Monitoring` / `Polling Interval`，提交为 `Initialize`。
 - 不要把生产密钥写进验证日志或 artifacts。

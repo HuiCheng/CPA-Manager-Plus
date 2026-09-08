@@ -1,6 +1,6 @@
 # AI 提供商
 
-AI 提供商列出已配置的 Gemini、Codex、Claude、Vertex、xAI 与 OpenAI-compatible 提供商，并打开各家族的新建或编辑路由。
+AI 提供商列出已配置的 Gemini、Interactions、Codex、Claude、Vertex、xAI 与 OpenAI-compatible 提供商；列表内新建/编辑多为抽屉，部分家族另有全页路由。
 
 ## Sub-features
 
@@ -25,7 +25,7 @@ Preconditions:
 - Demo 面板健康。
 - `doctor` 为绿。
 
-- **列表入口。** 选择 `AI Providers`。执行 `control-cpamp click --role link --name 'AI Providers'`。页面显示 `AI Providers Configuration`。
+- **列表入口。** 选择 `AI Providers`。执行 `control-cpamp click --role link --name 'AI Providers'`。页面显示 `AI Providers` 列表/页签（当前不渲染 `AI Providers Configuration` 标题）。
 - **Gemini 新建。** 打开 Gemini 新建路由。执行 `control-cpamp goto --hash '#/demo/ai-providers/gemini/new'`。Gemini 编辑表单出现。
 - **Codex 新建。** 打开 `#/demo/ai-providers/codex/new`。执行 `control-cpamp goto --hash '#/demo/ai-providers/codex/new'`。Codex 编辑表单出现。
 - **Claude 新建。** 打开 `#/demo/ai-providers/claude/new`。执行 `control-cpamp goto --hash '#/demo/ai-providers/claude/new'`。Claude 编辑表单出现。
@@ -39,4 +39,5 @@ Preconditions:
 ## Gotchas
 
 - 带索引的编辑路由需要该索引处有 fixture 或 live 提供商。索引为空时，结构证明优先用 `/new`。
+- 列表页的 Add/Edit 常打开抽屉，不等于自动进入 `/ai-providers/<family>/new` 路由；xAI 无独立 `/xai` 路由，走 Codex 抽屉变体。
 - 在 live CPA 上保存提供商编辑会改路由。写证明留在一次性实例。

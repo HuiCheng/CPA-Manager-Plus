@@ -21,12 +21,12 @@ Preconditions:
 - Demo 面板健康。
 - `doctor` 为绿。
 
-- **导航入口。** 选择 `Usage Analytics`。执行 `control-cpamp click --role link --name 'Usage Analytics'`。页面标题区域包含 `Usage Analytics`。
+- **导航入口。** 选择 `Usage Analytics`。执行 `control-cpamp click --role link --name 'Usage Analytics'`。侧栏/面包屑出现 `Usage Analytics`；页内优先等待 `Overview`（页面可能不渲染独立 H1 标题）。
 - **Hash 入口。** 打开深链。执行 `control-cpamp goto --hash '#/demo/usage-analytics'`。同一页面仍可见。
-- **内容。** 等待分析内容或空态。执行 `control-cpamp wait --text 'Usage Analytics'`。出现概览组件或 `No usage data`。永不结束的 spinner 不算成功。
+- **内容。** 等待分析内容或空态。执行 `control-cpamp wait --text 'Overview'`。出现概览组件（如 `Usage Trend Overview`）或 `No usage data`。永不结束的 spinner 不算成功。
 - **证明。** 捕获页面。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.png`。
 
 ## Gotchas
 
 - 在非 demo 模式下，本路由受 request monitoring 可用性门控。不可用的 live 面板会重定向到 Config Panel。
-- 图表可能稍晚才绘制。等待标题文案或空/错误文案，不要只靠固定 sleep。
+- 图表可能稍晚才绘制。等待 `Overview` 或空/错误文案，不要只靠固定 sleep；不要假设存在独立的 `Usage Analytics` 页内标题。

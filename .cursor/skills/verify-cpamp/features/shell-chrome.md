@@ -16,7 +16,7 @@
 
 - 在任意 demo 页使用侧栏导航。
 - 使用标为 `Refresh All`、`Language`、`Theme`、`Visual effects`、`Logout` 的 header 按钮。
-- 在窄视口使用移动端导航开关。
+- 在窄视口使用移动端导航开关（AX 名 `Expand sidebar` / `Collapse sidebar`）。
 
 ## Driving it with control-cpamp
 
@@ -36,4 +36,4 @@ Preconditions:
 
 - 选择非英语语言会改变后续步骤的 accessible name。在断言英文标签的配方前切回 `English`。
 - Demo logout 返回 demo 根路径，而不是 live 登录表单。
-- 移动端导航标签依赖视口宽度。断言移动开关前先设窄窗口。
+- 移动端导航标签依赖视口宽度。断言移动开关前先设窄窗口；不要用不存在的通用 “mobile nav” 文案。

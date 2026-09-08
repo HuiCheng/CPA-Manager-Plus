@@ -21,7 +21,7 @@ Preconditions:
 - Demo 面板在 `http://127.0.0.1:4173/#/demo` 健康。
 - `control-cpamp doctor` 报告 `"ok": true`。
 
-- **根入口。** 打开 demo 根路径。执行 `control-cpamp goto --hash '#/demo'`。页面出现 `Dashboard` 与欢迎文案。
+- **根入口。** 打开 demo 根路径。执行 `control-cpamp goto --hash '#/demo'`。页面出现 `Dashboard` 概览（流量/健康等卡片）；不要等待已移除的欢迎文案。
 - **导航入口。** 选择 `Dashboard`。执行 `control-cpamp click --role link --name 'Dashboard'`。shell 仍停在仪表盘概览。
 - **别名入口。** 打开 dashboard 别名。执行 `control-cpamp goto --hash '#/demo/dashboard'`。同一概览仍可见。
 - **刷新。** 选择 `Refresh All`。执行 `control-cpamp click --role button --name 'Refresh All'`。页面仍在 Dashboard，并继续显示概览内容。

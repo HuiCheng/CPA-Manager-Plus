@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `plugins-open` 打开 Plugin Management。
+- `plugins-open` 打开 Plugins（Installed 默认页签）。
 - `plugins-installed` 显示 Installed 页签。
 - `plugins-store` 显示 Plugin Store 页签以及 `/plugin-store` 重定向。
 - `plugins-resource` 打开如 Request Insights、Account Auditor 等 demo 插件资源页。
@@ -26,7 +26,7 @@ Preconditions:
 - `doctor` 为绿。
 - Demo 模式即使 live CPA 构建会隐藏插件，也会暴露插件入口。
 
-- **导航入口。** 选择 `Plugins`。执行 `control-cpamp click --role link --name 'Plugins'`。页面显示 `Plugin Management`。
+- **导航入口。** 选择 `Plugins`。执行 `control-cpamp click --role link --name 'Plugins'`。页面显示 `Installed` 页签内容（当前不渲染独立 `Plugin Management` 标题）。
 - **Installed 页签。** 选择 `Installed`。执行 `control-cpamp click --role tab --name 'Installed'`。已安装插件内容可见。
 - **Store 页签。** 选择 `Plugin Store`。执行 `control-cpamp click --role tab --name 'Plugin Store'`。商店内容可见。
 - **Store 重定向。** 打开旧商店 hash。执行 `control-cpamp goto --hash '#/demo/plugin-store'`。最终停在 plugins 下的 store 页签。

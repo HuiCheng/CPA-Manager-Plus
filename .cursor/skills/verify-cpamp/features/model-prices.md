@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `model-prices-open` 打开 Model Price Management。
+- `model-prices-open` 打开模型定价页（工具栏含 `Sync Prices`）。
 - `model-prices-summary` 显示定价摘要计数。
 - `model-prices-redirect` 跟随 monitoring 下的旧 model-prices 重定向到规范路由。
 
@@ -12,7 +12,7 @@
 
 - 打开 `#/demo/model-prices`。
 - 打开 `#/demo/monitoring/model-prices` 并接受重定向到 `#/demo/model-prices`。
-- 使用用量分析或监控中展示的站内链接。
+- 优先用 Request Monitor 动作栏站内链接；不要假设 Usage Analytics 页内也有入口。
 
 ## Driving it with control-cpamp
 
@@ -21,9 +21,9 @@ Preconditions:
 - Demo 面板健康。
 - `doctor` 为绿。
 
-- **规范入口。** 打开模型定价。执行 `control-cpamp goto --hash '#/demo/model-prices'`。页面显示 `Model Price Management`。
+- **规范入口。** 打开模型定价。执行 `control-cpamp goto --hash '#/demo/model-prices'`。页面显示 `Sync Prices` / 定价表（当前不渲染 `Model Price Management` 标题）。
 - **旧重定向。** 打开 monitoring 别名。执行 `control-cpamp goto --hash '#/demo/monitoring/model-prices'`。最终停在规范模型定价页。
-- **摘要。** 等待定价摘要。执行 `control-cpamp wait --text 'Model Price Management'`。摘要或同步区域可见。
+- **摘要。** 等待定价摘要。执行 `control-cpamp wait --text 'Sync Prices'`。同步区域或定价表可见。
 - **证明。** 捕获页面。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/model-prices.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/model-prices.png`。
 
 ## Gotchas
