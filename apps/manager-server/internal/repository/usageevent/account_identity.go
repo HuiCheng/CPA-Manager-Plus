@@ -21,71 +21,37 @@ type legacyAccountIdentityPredicate struct {
 	args []any
 }
 
-// maxCodexLegacyIdentityProbe is the largest matching set this check will
-// inspect per predicate. The request path cannot scan an unbounded
-// usage_events bucket; a larger set is treated as inconclusive and refused.
-const maxCodexLegacyIdentityProbe = 512
-
 // ResolveCodexLegacyAccountKey returns the file/index account key only when
-// every inspected matching usage event remains attributable to the requested
-// Codex account. Sets larger than maxCodexLegacyIdentityProbe are refused.
-// A false result is intentionally non-error: callers must fail closed and
-// continue with the stable key only.
+// every matching usage event remains attributable to the requested Codex
+// account. A false result is intentionally non-error: callers must fail
+// closed and continue with the stable key only.
 func ResolveCodexLegacyAccountKey(
 	ctx context.Context,
 	queryer SQLQueryer,
 	fields usageidentity.Fields,
 ) (string, bool, error) {
-	legacyKey, targetAccountID, authFile, authIndex, valid := codexLegacyTarget(fields)
+	legacyKey, targetAccountID, targetMember, authFile, authIndex, valid := codexLegacyTarget(fields)
 	if !valid {
 		return "", false, nil
 	}
-	allowed, err := inspectCodexLegacyIdentity(ctx, queryer, authFile, authIndex, targetAccountID)
-	if err != nil || !allowed {
+
+	evidenceGroups, available, err := queryStoredCodexLegacyIdentityEvidence(ctx, queryer, authFile, authIndex)
+	if err != nil {
 		return "", false, err
 	}
+	if !available {
+		for _, predicate := range legacyAccountIdentityPredicates(authFile, authIndex) {
+			predicateEvidence, err := queryLegacyAccountIdentityEvidence(ctx, queryer, predicate)
+			if err != nil {
+				return "", false, err
+			}
+			evidenceGroups = append(evidenceGroups, predicateEvidence...)
+		}
+	}
+	if !legacyAccountIdentityAllowed(evidenceGroups, targetAccountID, targetMember) {
+		return "", false, nil
+	}
 	return legacyKey, true, nil
-}
-
-func inspectCodexLegacyIdentity(
-	ctx context.Context,
-	queryer SQLQueryer,
-	authFile, authIndex, targetAccountID string,
-) (bool, error) {
-	for _, predicate := range legacyAccountIdentityPredicates(authFile, authIndex) {
-		allowed, err := inspectCodexLegacyIdentityPredicate(ctx, queryer, predicate, targetAccountID)
-		if err != nil {
-			return false, err
-		}
-		if !allowed {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func inspectCodexLegacyIdentityPredicate(
-	ctx context.Context,
-	queryer SQLQueryer,
-	predicate legacyAccountIdentityPredicate,
-	targetAccountID string,
-) (bool, error) {
-	args := make([]any, 0, len(predicate.args)+1)
-	args = append(args, predicate.args...)
-	args = append(args, maxCodexLegacyIdentityProbe+1)
-	rows, err := queryer.QueryContext(ctx, `select
-		coalesce(e.provider, ''),
-		coalesce(e.auth_provider_snapshot, ''),
-		coalesce(e.auth_account_id_snapshot, ''),
-		coalesce(e.auth_project_id_snapshot, '')
-	from usage_events e
-	where `+predicate.sql+`
-	order by e.timestamp_ms desc, e.id desc
-	limit ?`, args...)
-	if err != nil {
-		return false, err
-	}
-	return scanLegacyAccountIdentity(rows, targetAccountID, maxCodexLegacyIdentityProbe)
 }
 
 // ResolveCodexLegacyAccountKey evaluates the same check through a short
@@ -109,76 +75,52 @@ func (r *repository) ResolveCodexLegacyAccountKey(
 	return key, allowed, nil
 }
 
-func codexLegacyTarget(fields usageidentity.Fields) (string, string, string, string, bool) {
-	targetAccountID := strings.TrimSpace(fields.AuthAccountIDSnapshot)
-	if !codexLegacyIdentityRequested(fields) {
-		return "", "", "", "", false
+func codexLegacyTarget(fields usageidentity.Fields) (string, string, string, string, string, bool) {
+	provider := normalizeIdentityProvider(fields.AuthProviderSnapshot)
+	targetAccountID, workspaceOK := usageidentity.ResolveCodexWorkspace(fields)
+	targetMember, memberOK := usageidentity.NormalizeCodexMemberSnapshot(fields.AccountSnapshot)
+	// A legacy alias is allowed only for a target with explicit direct
+	// Workspace evidence. A marker in the historical project column can
+	// validate that evidence, but cannot by itself authorize a new alias.
+	if provider != "codex" || strings.TrimSpace(fields.AuthAccountIDSnapshot) == "" || !workspaceOK || !memberOK {
+		return "", "", "", "", "", false
 	}
-	authFile, authIndex, ok := codexLegacyCredential(fields)
-	if !ok {
-		return "", "", "", "", false
-	}
-	legacyKey, valid := usageidentity.LegacyAccountKey(fields)
-	if !valid {
-		return "", "", "", "", false
-	}
-	return legacyKey, targetAccountID, authFile, authIndex, true
-}
 
-func codexLegacyIdentityRequested(fields usageidentity.Fields) bool {
-	return normalizeIdentityProvider(fields.AuthProviderSnapshot) == "codex" &&
-		strings.TrimSpace(fields.AuthAccountIDSnapshot) != ""
-}
-
-func codexLegacyCredential(fields usageidentity.Fields) (string, string, bool) {
 	authFile := strings.TrimSpace(fields.AuthFileSnapshot)
 	if authFile == "" {
-		authFile = codexLegacySourceFile(fields)
+		source := strings.TrimSpace(fields.Source)
+		account := strings.TrimSpace(fields.AccountSnapshot)
+		label := strings.TrimSpace(fields.AuthLabelSnapshot)
+		if source != "" && !strings.EqualFold(source, account) && !strings.EqualFold(source, label) {
+			authFile = source
+		}
 	}
 	authIndex := strings.TrimSpace(fields.AuthIndex)
 	if authFile == "" || authIndex == "" {
-		return "", "", false
+		return "", "", "", "", "", false
 	}
-	return authFile, authIndex, true
-}
-
-func codexLegacySourceFile(fields usageidentity.Fields) string {
-	source := strings.TrimSpace(fields.Source)
-	account := strings.TrimSpace(fields.AccountSnapshot)
-	label := strings.TrimSpace(fields.AuthLabelSnapshot)
-	if source == "" || strings.EqualFold(source, account) || strings.EqualFold(source, label) {
-		return ""
+	legacyKey, valid := usageidentity.LegacyAccountKey(fields)
+	if !valid {
+		return "", "", "", "", "", false
 	}
-	return source
+	return legacyKey, targetAccountID, targetMember, authFile, authIndex, true
 }
 
 func legacyAccountIdentityPredicates(authFile, authIndex string) []legacyAccountIdentityPredicate {
-	predicates := make([]legacyAccountIdentityPredicate, 0, 6)
-	appendIndexPredicates := func(base string, baseArgs []any) {
-		if authIndex != "" {
-			predicates = append(predicates, legacyAccountIdentityPredicate{
-				sql:  base + ` and e.auth_index collate nocase = ?`,
-				args: append(append([]any{}, baseArgs...), authIndex),
-			})
-			return
-		}
-		predicates = append(predicates,
-			legacyAccountIdentityPredicate{
-				sql:  base + ` and e.auth_index is null`,
-				args: append([]any{}, baseArgs...),
-			},
-			legacyAccountIdentityPredicate{
-				sql:  base + ` and e.auth_index collate nocase = ''`,
-				args: append([]any{}, baseArgs...),
-			},
-		)
+	predicates := make([]legacyAccountIdentityPredicate, 0, 3)
+	appendIndexPredicate := func(base string, baseArgs []any) {
+		args := append(append([]any{}, baseArgs...), authIndex)
+		predicates = append(predicates, legacyAccountIdentityPredicate{
+			sql:  base + ` and e.auth_index collate nocase = ?`,
+			args: args,
+		})
 	}
 
-	appendIndexPredicates(`e.auth_file_snapshot collate nocase = ?`, []any{authFile})
+	appendIndexPredicate(`e.auth_file_snapshot collate nocase = ?`, []any{authFile})
 	legacySourceBase := `e.auth_file_snapshot is null and e.source collate nocase = ?` + legacySourceIdentityGuards()
-	appendIndexPredicates(legacySourceBase, []any{authFile})
+	appendIndexPredicate(legacySourceBase, []any{authFile})
 	legacyEmptySourceBase := `e.auth_file_snapshot = '' and e.source collate nocase = ?` + legacySourceIdentityGuards()
-	appendIndexPredicates(legacyEmptySourceBase, []any{authFile})
+	appendIndexPredicate(legacyEmptySourceBase, []any{authFile})
 	return predicates
 }
 
@@ -191,66 +133,179 @@ func legacySourceIdentityGuards() string {
 		and (e.auth_label_snapshot is null or lower(trim(e.source)) <> lower(trim(e.auth_label_snapshot)))`
 }
 
-func scanLegacyAccountIdentity(rows *sql.Rows, targetAccountID string, maxRows int) (bool, error) {
+const legacyAccountIdentityEvidenceColumns = `
+	coalesce(e.provider, ''),
+	coalesce(e.auth_provider_snapshot, ''),
+	coalesce(e.auth_account_id_snapshot, ''),
+	coalesce(e.auth_project_id_snapshot, ''),
+	coalesce(e.account_snapshot, ''),
+	coalesce(
+		min(case
+			when coalesce(e.auth_snapshot_at_ms, 0) > 0 then e.auth_snapshot_at_ms
+			when coalesce(e.created_at_ms, 0) > 0 then e.created_at_ms
+			else null
+		end),
+		0
+	) as min_evidence_at_ms,
+	coalesce(
+		max(case
+			when coalesce(e.auth_snapshot_at_ms, 0) > 0 then e.auth_snapshot_at_ms
+			when coalesce(e.created_at_ms, 0) > 0 then e.created_at_ms
+			else null
+		end),
+		0
+	) as max_evidence_at_ms,
+	max(case
+		when coalesce(e.auth_snapshot_at_ms, 0) > 0
+			or coalesce(e.created_at_ms, 0) > 0 then 0
+		else 1
+	end) as chronology_unknown
+`
+
+const legacyAccountIdentityEvidenceSelect = `select ` + legacyAccountIdentityEvidenceColumns + `from usage_events e
+where `
+
+const legacyAccountIdentityEvidenceGroupBy = `
+	group by
+		coalesce(e.provider, ''),
+		coalesce(e.auth_provider_snapshot, ''),
+		coalesce(e.auth_account_id_snapshot, ''),
+		coalesce(e.auth_project_id_snapshot, ''),
+		coalesce(e.account_snapshot, '')`
+
+type legacyAccountIdentityEvidence struct {
+	provider          string
+	authProvider      string
+	accountID         string
+	projectID         string
+	accountSnapshot   string
+	minEvidenceAtMS   int64
+	maxEvidenceAtMS   int64
+	chronologyUnknown bool
+}
+
+func queryLegacyAccountIdentityEvidence(
+	ctx context.Context,
+	queryer SQLQueryer,
+	predicate legacyAccountIdentityPredicate,
+) ([]legacyAccountIdentityEvidence, error) {
+	rows, err := queryer.QueryContext(ctx, legacyAccountIdentityEvidenceSelect+predicate.sql+legacyAccountIdentityEvidenceGroupBy, predicate.args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanLegacyAccountIdentityEvidenceRows(rows)
+}
+
+func scanLegacyAccountIdentityEvidenceRows(rows *sql.Rows) ([]legacyAccountIdentityEvidence, error) {
 	defer rows.Close()
-	seenRows := 0
+	evidenceGroups := make([]legacyAccountIdentityEvidence, 0)
 	for rows.Next() {
-		ok, err := consumeLegacyIdentityRow(rows, &seenRows, maxRows, targetAccountID)
-		if err != nil {
-			return false, err
+		var evidence legacyAccountIdentityEvidence
+		var chronologyUnknown int64
+		if err := rows.Scan(
+			&evidence.provider,
+			&evidence.authProvider,
+			&evidence.accountID,
+			&evidence.projectID,
+			&evidence.accountSnapshot,
+			&evidence.minEvidenceAtMS,
+			&evidence.maxEvidenceAtMS,
+			&chronologyUnknown,
+		); err != nil {
+			return nil, err
 		}
-		if !ok {
-			return false, nil
-		}
+		evidence.chronologyUnknown = chronologyUnknown != 0
+		evidenceGroups = append(evidenceGroups, evidence)
 	}
-	return true, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return evidenceGroups, nil
 }
 
-func consumeLegacyIdentityRow(rows *sql.Rows, seenRows *int, maxRows int, targetAccountID string) (bool, error) {
-	*seenRows++
-	if *seenRows > maxRows {
-		return false, nil
-	}
-	var provider, authProvider, accountID, projectID string
-	if err := rows.Scan(&provider, &authProvider, &accountID, &projectID); err != nil {
-		return false, err
-	}
-	return legacyIdentityRowAllowed(provider, authProvider, accountID, projectID, targetAccountID), nil
-}
+func legacyAccountIdentityAllowed(
+	evidenceGroups []legacyAccountIdentityEvidence,
+	targetAccountID, targetMember string,
+) bool {
+	trustedWorkspaceFound := false
+	directWorkspaceFound := false
+	weakFound := false
 
-func legacyIdentityRowAllowed(provider, authProvider, accountID, projectID, targetAccountID string) bool {
-	return legacyIdentityProviderAllowed(provider, authProvider) &&
-		legacyIdentityAccountIDsAllowed(accountID, projectID, targetAccountID)
-}
+	var minTrustedEvidenceAt int64
+	hasTrustedEvidenceAt := false
+	trustedChronologyKnown := true
 
-func legacyIdentityProviderAllowed(provider, authProvider string) bool {
-	hasProvider := false
-	for _, value := range []string{provider, authProvider} {
-		normalized := normalizeIdentityProvider(value)
-		if normalized == "" {
-			continue
+	var maxWeakEvidenceAt int64
+	hasWeakEvidenceAt := false
+	weakChronologyKnown := true
+
+	for _, evidence := range evidenceGroups {
+		hasProvider := false
+		for _, value := range []string{evidence.provider, evidence.authProvider} {
+			normalized := normalizeIdentityProvider(value)
+			if normalized == "" {
+				continue
+			}
+			hasProvider = true
+			if normalized != "codex" {
+				return false
+			}
 		}
-		hasProvider = true
-		if normalized != "codex" {
+		if !hasProvider {
 			return false
 		}
-	}
-	return hasProvider
-}
 
-func legacyIdentityAccountIDsAllowed(accountID, projectID, targetAccountID string) bool {
-	for _, value := range []string{
-		strings.TrimSpace(accountID),
-		usageidentity.CodexAccountIDFromSnapshot(projectID),
-	} {
-		if value == "" {
-			continue
-		}
-		if value != targetAccountID {
+		member, memberOK := usageidentity.NormalizeCodexMemberSnapshot(evidence.accountSnapshot)
+		if !memberOK || member != targetMember {
 			return false
 		}
+
+		directWorkspacePresent := strings.Trim(evidence.accountID, " ") != ""
+		markedWorkspacePresent := usageidentity.HasCodexAccountIDSnapshotMarker(evidence.projectID)
+		workspace, workspaceOK := usageidentity.ResolveCodexWorkspace(usageidentity.Fields{
+			AuthAccountIDSnapshot: evidence.accountID,
+			AuthProjectIDSnapshot: evidence.projectID,
+			AccountSnapshot:       evidence.accountSnapshot,
+		})
+		if directWorkspacePresent || markedWorkspacePresent {
+			if !workspaceOK || workspace != targetAccountID {
+				return false
+			}
+			trustedWorkspaceFound = true
+			if directWorkspacePresent {
+				directWorkspaceFound = true
+			}
+			if evidence.chronologyUnknown {
+				trustedChronologyKnown = false
+			} else if !hasTrustedEvidenceAt || evidence.minEvidenceAtMS < minTrustedEvidenceAt {
+				minTrustedEvidenceAt = evidence.minEvidenceAtMS
+				hasTrustedEvidenceAt = true
+			}
+			continue
+		}
+
+		weakFound = true
+		if evidence.chronologyUnknown {
+			weakChronologyKnown = false
+		} else if !hasWeakEvidenceAt || evidence.maxEvidenceAtMS > maxWeakEvidenceAt {
+			maxWeakEvidenceAt = evidence.maxEvidenceAtMS
+			hasWeakEvidenceAt = true
+		}
 	}
-	return true
+
+	if !trustedWorkspaceFound {
+		return false
+	}
+	if !weakFound {
+		return true
+	}
+	if !directWorkspaceFound {
+		return false
+	}
+	if !weakChronologyKnown || !trustedChronologyKnown || !hasWeakEvidenceAt || !hasTrustedEvidenceAt {
+		return false
+	}
+	return maxWeakEvidenceAt < minTrustedEvidenceAt
 }
 
 func normalizeIdentityProvider(value string) string {
