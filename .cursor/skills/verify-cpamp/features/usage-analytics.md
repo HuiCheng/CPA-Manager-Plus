@@ -1,32 +1,32 @@
-# Usage analytics
+# 用量分析
 
-Usage analytics shows calls, tokens, cost, and trend breakdowns for the connected usage dataset.
+用量分析展示已连接用量数据集的调用、token、成本与趋势拆分。
 
 ## Sub-features
 
-- `usage-open` opens the analytics page from nav or hash.
-- `usage-overview` shows the analytics title and primary overview regions.
-- `usage-empty-or-data` distinguishes fixture or live data from the empty and error states.
+- `usage-open` 从导航或 hash 打开分析页。
+- `usage-overview` 显示分析标题与主要概览区域。
+- `usage-empty-or-data` 区分 fixture/live 数据与空态、错误态。
 
 ## How to get to it (user POV)
 
-- Choose `Usage Analytics` in the sidebar.
-- Open `#/demo/usage-analytics`.
-- Follow documentation links to the Usage Analytics demo.
+- 在侧栏选择 `Usage Analytics`。
+- 打开 `#/demo/usage-analytics`。
+- 跟随文档链接进入 Usage Analytics demo。
 
 ## Driving it with control-cpamp
 
 Preconditions:
 
-- Demo panel is healthy.
-- `doctor` is green.
+- Demo 面板健康。
+- `doctor` 为绿。
 
-- **Nav entry.** Choose `Usage Analytics`. Run `control-cpamp click --role link --name 'Usage Analytics'`. The page heading area includes `Usage Analytics`.
-- **Hash entry.** Open the deep link. Run `control-cpamp goto --hash '#/demo/usage-analytics'`. The same page remains visible.
-- **Content.** Wait for analytics content or empty state. Run `control-cpamp wait --text 'Usage Analytics'`. Either overview widgets or `No usage data` appear. Do not treat a spinner that never resolves as success.
-- **Proof.** Capture the page. Run `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.aria.txt` and `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.png`.
+- **导航入口。** 选择 `Usage Analytics`。执行 `control-cpamp click --role link --name 'Usage Analytics'`。页面标题区域包含 `Usage Analytics`。
+- **Hash 入口。** 打开深链。执行 `control-cpamp goto --hash '#/demo/usage-analytics'`。同一页面仍可见。
+- **内容。** 等待分析内容或空态。执行 `control-cpamp wait --text 'Usage Analytics'`。出现概览组件或 `No usage data`。永不结束的 spinner 不算成功。
+- **证明。** 捕获页面。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/usage-analytics.png`。
 
 ## Gotchas
 
-- Outside demo mode this route is feature-gated on request monitoring availability. An unavailable live panel redirects to Config Panel.
-- Charts can take a moment to paint. Wait for title text or empty/error copy, not a fixed sleep alone.
+- 在非 demo 模式下，本路由受 request monitoring 可用性门控。不可用的 live 面板会重定向到 Config Panel。
+- 图表可能稍晚才绘制。等待标题文案或空/错误文案，不要只靠固定 sleep。

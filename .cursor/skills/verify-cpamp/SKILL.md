@@ -1,19 +1,19 @@
 ---
 name: verify-cpamp
-description: "Drive CPA Manager Plus the way a user does through the demo management panel (hash routes under #/demo). Use when proving UI behavior, validating a feature map path, or checking Launch/Doctor/Drive/Evidence/Cleanup for CPAMP."
+description: "按用户方式驱动 CPA Manager Plus 演示管理面板（`#/demo` 下的 hash 路由）。在需要证明 UI 行为、校验 feature map 路径，或执行 CPAMP 的 Launch/Doctor/Drive/Evidence/Cleanup 时使用。"
 ---
 
 # Verify CPA Manager Plus
 
-Agent-facing control skill for the CPA Manager Plus management panel.
+面向 agent 的 CPA Manager Plus 管理面板控制技能。
 
-Primary surface is the **demo site** (`npm run dev:demo`). It loads fixture data under `#/demo/*` and does not need CPA or Manager Server. Secondary surfaces (login against a live Manager Server or CPA Panel) are mapped but marked with live preconditions.
+主表面是 **demo site**（`npm run dev:demo`）。它在 `#/demo/*` 加载 fixture 数据，不需要 CPA 或 Manager Server。次要表面（对接真实 Manager Server 或 CPA Panel 的登录）已写入地图，但标了 live 前置条件。
 
-Never drive a panel instance you did not launch for this run.
+不要驱动本轮未由本技能启动的面板实例。
 
 ## Launch
 
-From the repo root:
+在仓库根目录执行：
 
 ```bash
 export CPAMP_VERIFY_RUN_ID="${CPAMP_VERIFY_RUN_ID:-$(date +%Y%m%d-%H%M%S)-$$}"
@@ -22,34 +22,34 @@ export CPAMP_VERIFY_CHROME_PORT="${CPAMP_VERIFY_CHROME_PORT:-9222}"
 ./.cursor/skills/verify-cpamp/scripts/launch.sh
 ```
 
-What this does:
+启动过程：
 
-1. Starts Vite directly from `apps/web` as `vite --mode demo --host 127.0.0.1 --port $CPAMP_VERIFY_PORT --strictPort` (avoids npm workspace arg stripping).
-2. Opens Google Chrome with a disposable profile and remote debugging on `$CPAMP_VERIFY_CHROME_PORT`.
-3. Navigates to `http://127.0.0.1:$PORT/#/demo` and waits until the Dashboard shell is visible.
-4. Writes run state under `$CPAMP_VERIFY_ROOT/$CPAMP_VERIFY_RUN_ID/state.json` (default root `/tmp/cpamp-verify`).
+1. 在 `apps/web` 直接启动 Vite：`vite --mode demo --host 127.0.0.1 --port $CPAMP_VERIFY_PORT --strictPort`（避免 npm workspace 吞掉参数）。
+2. 用一次性 profile 打开 Google Chrome，并在 `$CPAMP_VERIFY_CHROME_PORT` 开启 remote debugging。
+3. 打开 `http://127.0.0.1:$PORT/#/demo`，等到 Dashboard shell 可见。
+4. 把运行状态写到 `$CPAMP_VERIFY_ROOT/$CPAMP_VERIFY_RUN_ID/state.json`（默认根目录 `/tmp/cpamp-verify`）。
 
-Same-document hash changes use `location.hash` so React Router updates. Prefer nav clicks when a recipe needs the user path rather than only the deep link.
+同文档 hash 变更会走 `location.hash`。需要证明真实用户路径时，优先点侧栏，而不是只改深链。
 
-Ready signal: `launch` prints JSON with `"ok": true` and `doctor` later reports all checks true.
+就绪信号：`launch` 打印 `"ok": true` 的 JSON，之后 `doctor` 全部检查为 true。
 
-Teardown: `./.cursor/skills/verify-cpamp/scripts/cleanup.sh` (see Cleanup).
+拆除：`./.cursor/skills/verify-cpamp/scripts/cleanup.sh`（见 Cleanup）。
 
-If `scripts/node_modules` is missing, run `npm install` inside `.cursor/skills/verify-cpamp/scripts` once.
+若缺少 `scripts/node_modules`，先在 `.cursor/skills/verify-cpamp/scripts` 执行一次 `npm install`。
 
 ## Doctor
 
-Read-only health check for the current run:
+对当前 run 做只读健康检查：
 
 ```bash
 ./.cursor/skills/verify-cpamp/scripts/doctor.sh
 ```
 
-Requires the Vite PID, Chrome PID, HTTP base URL, Chrome debug endpoint, and demo shell text (`Dashboard` / `Credential Management` / `Request Monitor`) to all pass. Exit code `2` means do not drive. Relaunch or cleanup first.
+要求 Vite PID、Chrome PID、HTTP base URL、Chrome debug 端点，以及 demo shell 文案（`Dashboard` / `Credential Management` / `Request Monitor`）全部通过。退出码 `2` 表示不要继续 Drive。先 relaunch 或 cleanup。
 
 ## Drive
 
-Use the `control-cpamp` wrapper. Prefer hash navigation and English accessible names from `apps/web/src/i18n/locales/en.json`.
+使用 `control-cpamp` 包装器。优先用 hash 导航，以及 `apps/web/src/i18n/locales/en.json` 里的英文可访问名称。
 
 ```bash
 CTRL=./.cursor/skills/verify-cpamp/scripts/control-cpamp
@@ -62,9 +62,9 @@ $CTRL snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID
 $CTRL screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/monitoring.png
 ```
 
-Stable handles:
+稳定句柄：
 
-| Kind | Examples |
+| 类型 | 示例 |
 | --- | --- |
 | Hash routes | `#/demo`, `#/demo/monitoring`, `#/demo/accounts?view=health&healthMode=local` |
 | Nav links | `Dashboard`, `Usage Analytics`, `Request Monitor`, `Logs Viewer`, `Plugins`, `Config Panel`, `AI Providers`, `Credential Management`, `OAuth Login`, `System Info` |
@@ -74,23 +74,23 @@ Stable handles:
 | Config tabs | `Visual Editor`, `Source File Editor`, `CPA Manager Plus Configuration` |
 | Plugin tabs | `Installed`, `Plugin Store` |
 
-Demo paths mirror production paths under the `/demo` route base. Production login lives at `#/login` and needs a live backend. See `features/login-and-setup.md`.
+Demo 路径在 `/demo` route base 下镜像生产路径。生产登录在 `#/login`，需要 live backend。见 `features/login-and-setup.md`。
 
-Read `features/README.md` before a drive. Use the matching feature file as the recipe. A proof that only hits one convenient entry point is incomplete when the map lists others.
+Drive 前先读 `features/README.md`，再用对应 feature 文件当配方。地图列出了多个入口时，只打一个顺手入口不算完整证明。
 
 ## Evidence
 
-Default artifact directory:
+默认产物目录：
 
 `.cursor/skills/verify-cpamp/artifacts/<run-id>/`
 
-Proof standards:
+证明标准：
 
-- Exercise the real user path (nav click or documented hash). Do not seed Zustand stores or call test-only hooks.
-- Capture the action and the resulting state. Keep both an ARIA snapshot and a screenshot that shows panel identity (`CPA Manager Plus` branding or the page title).
-- For mutations in demo mode, re-read the UI after the action. Demo fixtures may reset on reload. Prefer reload-safe assertions.
-- Live Manager Server / CPA paths may mutate real data. Use a disposable data dir and admin key, or mark the path `verified-unreachable` with the missing precondition.
-- Cleanup must not delete evidence.
+- 走真实用户路径（侧栏点击或文档化的 hash）。不要注入 Zustand store，也不要调用仅测试用的 hook。
+- 同时捕获动作与结果态。保留 ARIA snapshot 和能看出面板身份的截图（`CPA Manager Plus` 品牌或页面标题）。
+- Demo 模式里的变更，动作后要再读一次 UI。Fixture 可能在 reload 后重置。优先可 reload 的断言。
+- Live Manager Server / CPA 路径可能改真实数据。使用一次性 data dir 与 admin key，或把该路径标为 `verified-unreachable` 并写明缺失前置条件。
+- Cleanup 不得删除 evidence。
 
 ## Cleanup
 
@@ -100,31 +100,31 @@ Proof standards:
 ./.cursor/skills/verify-cpamp/scripts/cleanup.sh --all
 ```
 
-Cleanup kills only the Vite and Chrome PIDs recorded in this run's state file. It never kills by process name. Evidence under `artifacts/<run-id>/` survives.
+Cleanup 只杀掉本 run 的 state 文件里记录的 Vite 与 Chrome PID。绝不按进程名杀。`artifacts/<run-id>/` 下的 evidence 会保留。
 
 ## Helpers
 
-| Command | Purpose |
+| 命令 | 用途 |
 | --- | --- |
-| `scripts/launch.sh` | Start demo Vite + Chrome for this run |
-| `scripts/doctor.sh` | Read-only readiness check |
-| `scripts/cleanup.sh` | Tear down PIDs from state |
-| `scripts/control-cpamp` | Drive commands (`goto`, `click`, `fill`, `wait`, `snapshot`, `screenshot`, `text`, `launch`, `doctor`, `cleanup`) |
+| `scripts/launch.sh` | 为本 run 启动 demo Vite + Chrome |
+| `scripts/doctor.sh` | 只读就绪检查 |
+| `scripts/cleanup.sh` | 按 state 拆除 PID |
+| `scripts/control-cpamp` | Drive 命令（`goto`, `click`, `fill`, `wait`, `snapshot`, `screenshot`, `text`, `launch`, `doctor`, `cleanup`） |
 
-Install harness deps once:
+Harness 依赖安装一次：
 
 ```bash
 npm install --prefix .cursor/skills/verify-cpamp/scripts
 ```
 
-Environment knobs: `CPAMP_VERIFY_RUN_ID`, `CPAMP_VERIFY_ROOT`, `CPAMP_VERIFY_PORT`, `CPAMP_VERIFY_BASE_URL`, `CPAMP_VERIFY_ARTIFACTS`, `CPAMP_VERIFY_CHROME`, `CPAMP_VERIFY_CHROME_PORT`.
+环境变量：`CPAMP_VERIFY_RUN_ID`, `CPAMP_VERIFY_ROOT`, `CPAMP_VERIFY_PORT`, `CPAMP_VERIFY_BASE_URL`, `CPAMP_VERIFY_ARTIFACTS`, `CPAMP_VERIFY_CHROME`, `CPAMP_VERIFY_CHROME_PORT`。
 
 ## Isolate
 
-- Use a dedicated `CPAMP_VERIFY_PORT` / `CPAMP_VERIFY_CHROME_PORT` pair per concurrent run.
-- Chrome uses `$CPAMP_VERIFY_ROOT/$RUN_ID/chrome-profile`. Do not reuse a personal profile.
-- Demo mode is self-contained. Full Docker (`docker compose -f docker-compose.manager.yml`) and CPA Panel login share real CPA state. Refuse to double-drive a shared live instance.
+- 并发 run 使用独立的 `CPAMP_VERIFY_PORT` / `CPAMP_VERIFY_CHROME_PORT` 组合。
+- Chrome 使用 `$CPAMP_VERIFY_ROOT/$RUN_ID/chrome-profile`。不要复用个人 profile。
+- Demo 模式自包含。Full Docker（`docker compose -f docker-compose.manager.yml`）与 CPA Panel 登录共享真实 CPA 状态。拒绝双开驱动共享 live 实例。
 
 ## Feature map
 
-See [features/README.md](features/README.md).
+见 [features/README.md](features/README.md)。

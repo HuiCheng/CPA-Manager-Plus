@@ -1,59 +1,59 @@
-# CPA Manager Plus verification map
+# CPA Manager Plus 验证地图
 
-Maintained source for verifying user-facing behavior of the CPA Manager Plus management panel. Read this index before driving the app, then use the matching feature file as the recipe.
+这是 CPA Manager Plus 管理面板用户可见行为的维护源。先读本索引，再打开对应 feature 文件作为配方。
 
 ## Baseline preconditions
 
-- Launch the demo panel with `./.cursor/skills/verify-cpamp/scripts/launch.sh`.
-- Default URL is `http://127.0.0.1:4173/#/demo`.
-- Set a unique `CPAMP_VERIFY_RUN_ID` so concurrent runs do not share Chrome profiles or state files.
-- Put English UI labels in play. The demo defaults to the browser language. If labels differ, switch Language to `English` via the header control before asserting names.
-- Run `./.cursor/skills/verify-cpamp/scripts/doctor.sh` and require `"ok": true`.
-- Never drive an instance that was not started by this verification run.
-- Live login, Manager Server setup, and destructive CPA mutations need a disposable backend. Without one, report those entry points as `verified-unreachable` with the missing precondition. Do not pretend a demo path covers them.
+- 用 `./.cursor/skills/verify-cpamp/scripts/launch.sh` 启动 demo 面板。
+- 默认 URL 为 `http://127.0.0.1:4173/#/demo`。
+- 设置唯一的 `CPAMP_VERIFY_RUN_ID`，避免并发 run 共享 Chrome profile 或 state 文件。
+- 断言时使用英文 UI 标签。Demo 默认跟随浏览器语言。若标签不一致，先用 header 的 `Language` 切到 `English`。
+- 运行 `./.cursor/skills/verify-cpamp/scripts/doctor.sh`，要求 `"ok": true`。
+- 不要驱动本轮未启动的实例。
+- Live 登录、Manager Server setup，以及破坏性 CPA 变更需要一次性 backend。没有时把入口记为 `verified-unreachable` 并写明缺失前置条件。不要用 demo 路径冒充已验证。
 
 ## Driving conventions
 
-- Start every recipe from `#/demo` unless its preconditions say otherwise.
-- Prefer ARIA roles and accessible names over CSS selectors or DOM position.
-- Prefer documented hash routes when a deep link is a first-class user entry point.
-- Treat every command as literal. Keep quoted names and flags unchanged.
-- Run browser actions through `./.cursor/skills/verify-cpamp/scripts/control-cpamp`.
-- Restore demo-safe state after a mutation when the recipe says so. Do not remove proof artifacts during cleanup.
+- 除非配方另写前置条件，否则从 `#/demo` 起步。
+- 优先 ARIA role 与 accessible name，不要靠 CSS 选择器或 DOM 位置。
+- 深链本身就是一等用户入口时，优先用文档化的 hash 路由。
+- 把命令当字面量。引号内的名称与 flag 不要改写。
+- 浏览器动作走 `./.cursor/skills/verify-cpamp/scripts/control-cpamp`。
+- 配方要求时，在变更后恢复 demo 安全状态。Cleanup 时不要删除 proof artifacts。
 
 ## Proof and skip reporting
 
-- Capture the user action and the resulting state, not only the final screen.
-- UI proof includes an ARIA snapshot and a screenshot with panel identity visible.
-- Mutation proof includes a second user-facing read of the changed value.
-- Record the feature ID and entry point used with every artifact.
-- Report an unreachable path with the attempted command and the unmet precondition.
-- Do not report a skipped entry point as verified through a different path.
+- 同时捕获用户动作与结果态，不要只留最终画面。
+- UI 证明包含 ARIA snapshot 与能看出面板身份的截图。
+- 变更证明要有第二次面向用户的读回。
+- 每份 artifact 记录 feature ID 与所用入口。
+- 不可达路径要写尝试过的命令与未满足前置条件。
+- 不要把跳过的入口写成已通过另一路径验证。
 
 ## Feature entry contract
 
-Each feature file starts with an H1 title and one paragraph describing the user-visible behavior. It then uses exactly four H2 sections in this order.
+每个 feature 文件以 H1 标题开头，再用一段说明用户可见行为。随后严格按此顺序使用四个英文 H2（结构约定，供 `/maintain-verification-skill` 识别）：
 
-1. `Sub-features` lists short IDs with one line for each behavior.
-2. `How to get to it (user POV)` lists every user entry point.
-3. `Driving it with control-cpamp` starts with `Preconditions:` and uses labeled bullets that pair each user action with an exact command and observable result.
-4. `Gotchas` lists traps that can waste or invalidate a verification run.
+1. `Sub-features` 列出短 ID，每行一种行为。
+2. `How to get to it (user POV)` 列出全部用户入口。
+3. `Driving it with control-cpamp` 以 `Preconditions:` 开头，用带标签的条目把用户动作、精确命令与可观察结果配对。
+4. `Gotchas` 列出会浪费或污染验证 run 的陷阱。
 
-Keep implementation details out of the map. Name only user paths, stable handles, required state, commands, and observable proof.
+地图里只写用户路径、稳定句柄、所需状态、命令与可观察证明，不写实现细节。
 
 ## Features
 
-- [Dashboard](./dashboard.md) covers the home overview under `#/demo`.
-- [Login and setup](./login-and-setup.md) covers `#/login`, Manager Server setup wizard steps, and CPA Panel connect.
-- [Usage analytics](./usage-analytics.md) covers cost and usage analytics.
-- [Request monitor](./monitoring-center.md) covers monitoring data tabs and request inspection.
-- [Auth issue handling](./account-actions.md) covers `#/demo/monitoring/account-actions`.
-- [Model prices](./model-prices.md) covers `#/demo/model-prices` and the monitoring redirect.
-- [Logs viewer](./logs.md) covers CPA log viewing controls.
-- [Plugins](./plugins.md) covers installed plugins, plugin store, and plugin resource pages.
-- [Config panel](./config.md) covers visual, source, and Manager configuration tabs.
-- [AI providers](./ai-providers.md) covers provider list and per-provider create/edit routes.
-- [Credential management](./accounts.md) covers account list, health inspection, OAuth config, and detail tabs.
-- [OAuth login](./oauth.md) covers the standalone OAuth page.
-- [System info](./system.md) covers system status, database status, and clear-login actions.
-- [Shell chrome](./shell-chrome.md) covers header refresh, language, theme, visual effects, logout, and mobile nav.
+- [仪表盘](./dashboard.md) 覆盖 `#/demo` 下的首页概览。
+- [登录与初始化](./login-and-setup.md) 覆盖 `#/login`、Manager Server setup wizard，以及 CPA Panel 连接。
+- [用量分析](./usage-analytics.md) 覆盖成本与用量分析。
+- [请求监控](./monitoring-center.md) 覆盖监控数据页签与请求检查。
+- [鉴权问题处理](./account-actions.md) 覆盖 `#/demo/monitoring/account-actions`。
+- [模型定价](./model-prices.md) 覆盖 `#/demo/model-prices` 与 monitoring 重定向。
+- [日志查看](./logs.md) 覆盖 CPA 日志查看控件。
+- [插件](./plugins.md) 覆盖已安装插件、插件商店与插件资源页。
+- [配置面板](./config.md) 覆盖 visual、source 与 Manager 配置页签。
+- [AI 提供商](./ai-providers.md) 覆盖提供商列表与各提供商新建/编辑路由。
+- [凭证管理](./accounts.md) 覆盖列表、健康检查、OAuth 配置与详情页签。
+- [OAuth 登录](./oauth.md) 覆盖独立 OAuth 页面。
+- [系统信息](./system.md) 覆盖系统状态、数据库状态与清除登录。
+- [壳层控件](./shell-chrome.md) 覆盖 header 刷新、语言、主题、视觉效果、退出与移动端导航。

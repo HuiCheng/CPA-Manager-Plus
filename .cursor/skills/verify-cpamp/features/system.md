@@ -1,33 +1,33 @@
-# System info
+# 系统信息
 
-System info shows product identity, connection status, optional SQLite storage status, model inventory links, and clear-login helpers.
+系统信息展示产品身份、连接状态、可选 SQLite 存储状态、模型清单入口，以及清除登录辅助。
 
 ## Sub-features
 
-- `system-open` opens System Info.
-- `system-about` shows CPA Manager Plus identity.
-- `system-database` shows SQLite storage status when Manager Server features are available.
-- `system-clear-login` exposes clear-login controls without requiring activation during read-only proof.
+- `system-open` 打开 System Info。
+- `system-about` 显示 CPA Manager Plus 身份。
+- `system-database` 在 Manager Server 功能可用时显示 SQLite 存储状态。
+- `system-clear-login` 暴露清除登录控件；只读证明不必真正点击。
 
 ## How to get to it (user POV)
 
-- Choose `System Info` in the sidebar.
-- Open `#/demo/system`.
-- Open `#/demo/system?maintenance=degraded` to exercise the degraded maintenance fixture.
+- 在侧栏选择 `System Info`。
+- 打开 `#/demo/system`。
+- 打开 `#/demo/system?maintenance=degraded` 以练习 degraded maintenance fixture。
 
 ## Driving it with control-cpamp
 
 Preconditions:
 
-- Demo panel is healthy.
-- `doctor` is green.
+- Demo 面板健康。
+- `doctor` 为绿。
 
-- **Nav entry.** Choose `System Info`. Run `control-cpamp click --role link --name 'System Info'`. The page shows `System Info`.
-- **Hash entry.** Open `#/demo/system`. Run `control-cpamp goto --hash '#/demo/system'`. About and status regions are visible.
-- **Degraded fixture.** Open `#/demo/system?maintenance=degraded`. Run `control-cpamp goto --hash '#/demo/system?maintenance=degraded'`. Maintenance-related copy appears when the fixture is active.
-- **Proof.** Capture System Info. Run `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/system.aria.txt` and `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/system.png`.
+- **导航入口。** 选择 `System Info`。执行 `control-cpamp click --role link --name 'System Info'`。页面显示 `System Info`。
+- **Hash 入口。** 打开 `#/demo/system`。执行 `control-cpamp goto --hash '#/demo/system'`。About 与状态区域可见。
+- **Degraded fixture。** 打开 `#/demo/system?maintenance=degraded`。执行 `control-cpamp goto --hash '#/demo/system?maintenance=degraded'`。fixture 激活时出现维护相关文案。
+- **证明。** 捕获 System Info。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/system.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/system.png`。
 
 ## Gotchas
 
-- Database status depends on Manager Server availability. Missing storage cards can still be a valid demo end state.
-- Clear-login mutates local auth state. Prefer read-only proof unless intentionally testing logout recovery.
+- 数据库状态依赖 Manager Server 可用性。缺少存储卡片在 demo 里仍可能是有效终态。
+- 清除登录会改本地认证状态。除非刻意测退出恢复，否则优先只读证明。

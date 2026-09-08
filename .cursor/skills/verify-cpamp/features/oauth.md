@@ -1,32 +1,32 @@
-# OAuth login
+# OAuth 登录
 
-OAuth login starts provider OAuth flows for Codex, Anthropic, Antigravity, Kimi, xAI, and plugin-provided OAuth entries.
+OAuth 登录为 Codex、Anthropic、Antigravity、Kimi、xAI 以及插件提供的 OAuth 条目启动提供商 OAuth 流程。
 
 ## Sub-features
 
-- `oauth-open` opens the standalone OAuth Login page.
-- `oauth-provider-cards` shows built-in provider cards and start buttons.
-- `oauth-start-readiness` proves a start control is present without completing an external browser login unless a disposable provider is configured.
+- `oauth-open` 打开独立 OAuth Login 页。
+- `oauth-provider-cards` 显示内置提供商卡片与启动按钮。
+- `oauth-start-readiness` 证明启动控件存在；除非配置了可丢弃提供商，否则不完成外部浏览器登录。
 
 ## How to get to it (user POV)
 
-- Choose `OAuth Login` in the sidebar.
-- Open `#/demo/oauth`.
-- Open provider-deep links such as `#/demo/oauth?provider=demo` when offered by fixtures.
+- 在侧栏选择 `OAuth Login`。
+- 打开 `#/demo/oauth`。
+- 当 fixture 提供时，打开如 `#/demo/oauth?provider=demo` 的提供商深链。
 
 ## Driving it with control-cpamp
 
 Preconditions:
 
-- Demo panel is healthy.
-- `doctor` is green.
+- Demo 面板健康。
+- `doctor` 为绿。
 
-- **Nav entry.** Choose `OAuth Login`. Run `control-cpamp click --role link --name 'OAuth Login'`. OAuth provider cards are visible.
-- **Hash entry.** Open `#/demo/oauth`. Run `control-cpamp goto --hash '#/demo/oauth'`. The same page remains visible.
-- **Provider presence.** Wait for a built-in provider title such as `Codex OAuth`. Run `control-cpamp wait --text 'Codex OAuth'`. Start controls such as `Start Codex Login` are present.
-- **Proof.** Capture the provider list. Run `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/oauth.aria.txt` and `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/oauth.png`.
+- **导航入口。** 选择 `OAuth Login`。执行 `control-cpamp click --role link --name 'OAuth Login'`。OAuth 提供商卡片可见。
+- **Hash 入口。** 打开 `#/demo/oauth`。执行 `control-cpamp goto --hash '#/demo/oauth'`。同一页面仍可见。
+- **提供商存在。** 等待内置提供商标题如 `Codex OAuth`。执行 `control-cpamp wait --text 'Codex OAuth'`。存在如 `Start Codex Login` 的启动控件。
+- **证明。** 捕获提供商列表。执行 `control-cpamp snapshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/oauth.aria.txt` 与 `control-cpamp screenshot --path .cursor/skills/verify-cpamp/artifacts/$CPAMP_VERIFY_RUN_ID/oauth.png`。
 
 ## Gotchas
 
-- Completing a real OAuth handshake needs an external identity provider and writes auth files. Stop at start-control readiness unless the environment is disposable and intended for that flow.
-- Accounts also has an OAuth Configuration view. This file covers the standalone `#/oauth` page only.
+- 完成真实 OAuth 握手需要外部 IdP，并会写入 auth 文件。除非环境可丢弃且本意就是跑该流程，否则停在启动控件就绪。
+- Accounts 里也有 OAuth Configuration 视图。本文件只覆盖独立 `#/oauth` 页。
