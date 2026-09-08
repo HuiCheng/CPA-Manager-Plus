@@ -23,6 +23,11 @@ dist-demo
 dist-ssr
 *.local
 skills
+!.cursor/
+!.cursor/skills/
+!.cursor/skills/**
+.cursor/skills/**/artifacts/**
+.cursor/skills/**/scripts/node_modules/
 .playwright-mcp/
 
 # Editor directories and files
