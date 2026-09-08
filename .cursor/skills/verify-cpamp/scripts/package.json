@@ -1,0 +1,9 @@
+{
+  "name": "verify-cpamp-scripts",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}
