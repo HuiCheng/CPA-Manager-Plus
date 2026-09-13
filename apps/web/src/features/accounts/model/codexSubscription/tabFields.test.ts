@@ -156,6 +156,9 @@ describe('buildCodexSubscriptionTabFields', () => {
         status: 'soft_failed',
         accountId: 'acct_plus',
         failedAtMs: 1,
+        lastAttemptAtMs: 1,
+        lastAuthIndex: '1',
+        triedAuthIndexes: ['1'],
         errorKind: 'http',
       })
     ).toEqual([]);

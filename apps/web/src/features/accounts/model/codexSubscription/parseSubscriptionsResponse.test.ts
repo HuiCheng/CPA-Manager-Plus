@@ -70,6 +70,34 @@ describe('parseSubscriptionsResponse', () => {
     expect(record?.activeUntilMs).toBe(Date.parse('2026-08-01T00:00:00Z'));
   });
 
+  it('returns null when the requested account is missing from an array payload', () => {
+    const payload = [
+      { account_id: 'acct_A', plan_type: 'plus', active_until: '2026-01-01T00:00:00Z' },
+      { account_id: 'acct_B', plan_type: 'pro', active_until: '2026-08-01T00:00:00Z' },
+    ];
+
+    expect(parseSubscriptionsResponse(payload, 'acct_missing', FETCHED_AT)).toBeNull();
+    expect(parseSubscriptionsResponse(payload, 'acct_C', FETCHED_AT)).toBeNull();
+  });
+
+  it('parses JSON string payloads like sister usage parsers', () => {
+    const record = parseSubscriptionsResponse(
+      JSON.stringify({
+        plan_type: 'plus',
+        active_until: '2026-06-10T02:52:15Z',
+        account_id: 'acc_123',
+      }),
+      'acc_123',
+      FETCHED_AT
+    );
+
+    expect(record).toMatchObject({
+      accountId: 'acc_123',
+      planType: 'plus',
+      activeUntilMs: Date.parse('2026-06-10T02:52:15Z'),
+    });
+  });
+
   it('parses optional extras only when present', () => {
     const record = parseSubscriptionsResponse(
       {

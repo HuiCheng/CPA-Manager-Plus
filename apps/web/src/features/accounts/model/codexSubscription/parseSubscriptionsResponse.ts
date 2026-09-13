@@ -23,6 +23,16 @@ const unwrapSubscriptionPayload = (
   payload: unknown,
   accountId: string
 ): Record<string, unknown> | null => {
+  if (typeof payload === 'string') {
+    const trimmed = payload.trim();
+    if (!trimmed) return null;
+    try {
+      return unwrapSubscriptionPayload(JSON.parse(trimmed), accountId);
+    } catch {
+      return null;
+    }
+  }
+
   if (Array.isArray(payload)) {
     const records = payload
       .map(asRecord)
@@ -33,7 +43,7 @@ const unwrapSubscriptionPayload = (
       );
       return candidate === accountId;
     });
-    return matched ?? records[0] ?? null;
+    return matched ?? null;
   }
 
   const record = asRecord(payload);

@@ -2,9 +2,11 @@ import type { TFunction } from 'i18next';
 import type { CodexQuotaState } from '@/types';
 import { normalizeStringValue, parseIdTokenPayload } from '@/utils/quota/parsers';
 import { getPlanPresentation, resolveAuthFilePlanType, type PlanPresentation } from '@/utils/plans';
+import { resolveCodexChatgptAccountId } from '@/utils/quota/resolvers';
 import type { CodexSubscriptionRecord } from './codexSubscription/types';
 import { parseSubscriptionTimestampMs } from './codexSubscription/parseSubscriptionTimestamp';
 import { resolveSubscriptionUntilMs } from './codexSubscription/parseSubscriptionsResponse';
+import { getReadyCodexSubscriptionRecord } from './codexSubscription/store';
 import type { AccountRow } from './accountRows';
 
 export const parseValidSubscriptionUntilMs = parseSubscriptionTimestampMs;
@@ -42,8 +44,13 @@ export const resolveCodexSubscriptionUntilMs = (
     };
   }
 
+  const resolvedRecord =
+    subscriptionsRecord !== undefined
+      ? subscriptionsRecord
+      : getReadyCodexSubscriptionRecord(resolveCodexChatgptAccountId(row.raw));
+
   const liveSubscriptionUntilMs =
-    resolveSubscriptionUntilMs(subscriptionsRecord) ??
+    resolveSubscriptionUntilMs(resolvedRecord) ??
     parseValidSubscriptionUntilMs(codexQuota?.subscriptionActiveUntil);
 
   const metadata = asRecord(row.raw.metadata);

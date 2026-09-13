@@ -22,7 +22,15 @@ export type CodexSubscriptionEntry =
   | { status: 'idle' }
   | { status: 'loading'; accountId: string; inflightSinceMs: number }
   | { status: 'ready'; record: CodexSubscriptionRecord }
-  | { status: 'soft_failed'; accountId: string; failedAtMs: number; errorKind: string };
+  | {
+      status: 'soft_failed';
+      accountId: string;
+      failedAtMs: number;
+      lastAttemptAtMs: number;
+      lastAuthIndex: string;
+      triedAuthIndexes: string[];
+      errorKind: string;
+    };
 
 export type CodexSubscriptionFetchInput = {
   accountId: string;
@@ -31,6 +39,7 @@ export type CodexSubscriptionFetchInput = {
 };
 
 export const CODEX_SUBSCRIPTION_TTL_MS = 30 * 60 * 1000;
+export const CODEX_SUBSCRIPTION_RETRY_COOLDOWN_MS = 30 * 1000;
 
 export const emptyCodexSubscriptionExtras = (): CodexSubscriptionExtras => ({
   seatsInUse: null,

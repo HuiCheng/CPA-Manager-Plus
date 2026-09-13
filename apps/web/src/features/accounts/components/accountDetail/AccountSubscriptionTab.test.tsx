@@ -146,6 +146,9 @@ describe('AccountSubscriptionTab', () => {
       status: 'soft_failed',
       accountId: 'acct_pro',
       failedAtMs: 1,
+      lastAttemptAtMs: 1,
+      lastAuthIndex: '1',
+      triedAuthIndexes: ['1'],
       errorKind: 'http',
     });
     const errorBox = failed.root.find(

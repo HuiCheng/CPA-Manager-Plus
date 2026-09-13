@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { classifyCodexSubscriptionError, fetchCodexSubscription } from './fetchCodexSubscription';
-import { CODEX_SUBSCRIPTION_TTL_MS, type CodexSubscriptionEntry } from './types';
+import {
+  CODEX_SUBSCRIPTION_RETRY_COOLDOWN_MS,
+  CODEX_SUBSCRIPTION_TTL_MS,
+  type CodexSubscriptionEntry,
+} from './types';
 
 type EnsureCodexSubscriptionInput = {
   accountId: string;
@@ -16,9 +20,24 @@ interface CodexSubscriptionState {
   clearForTests: () => void;
 }
 
-const inflight = new Map<string, Promise<CodexSubscriptionEntry>>();
+const inflight = new Map<string, { promise: Promise<CodexSubscriptionEntry>; force: boolean }>();
 
 const idleEntry = (): CodexSubscriptionEntry => ({ status: 'idle' });
+
+const isRetryCooldownActive = (entry: CodexSubscriptionEntry, nowMs: number): boolean => {
+  if (entry.status !== 'soft_failed') return false;
+  const lastMs = entry.lastAttemptAtMs ?? entry.failedAtMs;
+  return nowMs - lastMs < CODEX_SUBSCRIPTION_RETRY_COOLDOWN_MS;
+};
+
+const canRotateSoftFailedAuthIndex = (
+  entry: CodexSubscriptionEntry,
+  authIndex: string
+): boolean => {
+  if (entry.status !== 'soft_failed') return false;
+  if (entry.errorKind !== 'http' && entry.errorKind !== 'network') return false;
+  return !entry.triedAuthIndexes.includes(authIndex);
+};
 
 export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, get) => ({
   entries: {},
@@ -36,8 +55,21 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
       return current;
     }
 
+    if (
+      !force &&
+      isRetryCooldownActive(current, nowMs) &&
+      !canRotateSoftFailedAuthIndex(current, authIndex)
+    ) {
+      return current;
+    }
+
     const existing = inflight.get(id);
-    if (existing) return existing;
+    if (existing) {
+      if (!force || existing.force) return existing.promise;
+      return existing.promise.then(() =>
+        get().ensureFresh({ accountId: id, authIndex, nowMs, force: true })
+      );
+    }
 
     const request = (async (): Promise<CodexSubscriptionEntry> => {
       if (current.status !== 'ready') {
@@ -60,14 +92,20 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
         }));
         return ready;
       } catch (error) {
-        const previous = get().entries[id];
-        if (previous?.status === 'ready') {
-          return previous;
-        }
+        const carryTried =
+          current.status === 'soft_failed' && isRetryCooldownActive(current, nowMs)
+            ? current.triedAuthIndexes
+            : [];
+        const triedAuthIndexes = carryTried.includes(authIndex)
+          ? carryTried
+          : [...carryTried, authIndex];
         const failed: CodexSubscriptionEntry = {
           status: 'soft_failed',
           accountId: id,
-          failedAtMs: Date.now(),
+          failedAtMs: nowMs,
+          lastAttemptAtMs: nowMs,
+          lastAuthIndex: authIndex,
+          triedAuthIndexes,
           errorKind: classifyCodexSubscriptionError(error),
         };
         set((state) => ({
@@ -82,7 +120,7 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
       }
     })();
 
-    inflight.set(id, request);
+    inflight.set(id, { promise: request, force });
     return request;
   },
   clearForTests: () => {

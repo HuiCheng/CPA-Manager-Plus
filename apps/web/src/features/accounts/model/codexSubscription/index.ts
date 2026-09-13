@@ -4,7 +4,11 @@ export type {
   CodexSubscriptionFetchInput,
   CodexSubscriptionRecord,
 } from './types';
-export { CODEX_SUBSCRIPTION_TTL_MS, emptyCodexSubscriptionExtras } from './types';
+export {
+  CODEX_SUBSCRIPTION_RETRY_COOLDOWN_MS,
+  CODEX_SUBSCRIPTION_TTL_MS,
+  emptyCodexSubscriptionExtras,
+} from './types';
 export { parseSubscriptionTimestampMs } from './parseSubscriptionTimestamp';
 export {
   parseSubscriptionsResponse,
