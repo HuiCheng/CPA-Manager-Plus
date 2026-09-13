@@ -51,6 +51,14 @@ const unwrapSubscriptionPayload = (
 
   const nested = record.subscription ?? record.subscriptions;
   if (nested !== undefined) {
+    const parentAccountId = readPayloadAccountId(record);
+    if (!Array.isArray(nested) && parentAccountId !== null && parentAccountId !== accountId) {
+      const nestedRecord = asRecord(nested);
+      const nestedAccountId = nestedRecord ? readPayloadAccountId(nestedRecord) : null;
+      if (nestedAccountId !== accountId) {
+        return null;
+      }
+    }
     return unwrapSubscriptionPayload(nested, accountId);
   }
 

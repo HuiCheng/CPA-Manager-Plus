@@ -84,6 +84,42 @@ describe('parseSubscriptionsResponse', () => {
     ).toBeNull();
   });
 
+  it('returns null when a parent account_id mismatches a nested token-scoped object', () => {
+    expect(
+      parseSubscriptionsResponse(
+        {
+          account_id: 'OTHER',
+          subscription: {
+            plan_type: 'plus',
+            active_until: '2099-01-01T00:00:00Z',
+          },
+        },
+        'MINE',
+        FETCHED_AT
+      )
+    ).toBeNull();
+  });
+
+  it('still matches a nested array account under a different parent envelope id', () => {
+    const record = parseSubscriptionsResponse(
+      {
+        account_id: 'OTHER',
+        subscriptions: [
+          { account_id: 'OTHER', plan_type: 'free', active_until: '2026-01-01T00:00:00Z' },
+          { account_id: 'MINE', plan_type: 'plus', active_until: '2099-01-01T00:00:00Z' },
+        ],
+      },
+      'MINE',
+      FETCHED_AT
+    );
+
+    expect(record).toMatchObject({
+      accountId: 'MINE',
+      planType: 'plus',
+      activeUntilMs: Date.parse('2099-01-01T00:00:00Z'),
+    });
+  });
+
   it('returns null when a nested object belongs to another account', () => {
     expect(
       parseSubscriptionsResponse(
