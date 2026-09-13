@@ -84,8 +84,17 @@ export const buildAccountSubscriptionPresentation = (input: {
   nowMs?: number;
 }): AccountSubscriptionPresentation => {
   const { row, codexQuota, subscriptionsRecord, t, nowMs = Date.now() } = input;
+  const resolvedSubscriptions =
+    subscriptionsRecord !== undefined
+      ? subscriptionsRecord
+      : row.provider === 'codex'
+        ? getReadyCodexSubscriptionRecord(resolveCodexChatgptAccountId(row.raw))
+        : null;
   const effectivePlanType = normalizeStringValue(
-    codexQuota?.planType ?? row.planType ?? resolveAuthFilePlanType(row.raw)
+    resolvedSubscriptions?.planType ??
+      codexQuota?.planType ??
+      row.planType ??
+      resolveAuthFilePlanType(row.raw)
   );
   const planPresentation = getPlanPresentation({
     provider: row.provider,

@@ -3994,6 +3994,8 @@ export function AccountsPage() {
   }, [files, getDisplayCodexHeaderSnapshot, getDisplayCodexQuota]);
 
   const rows = useMemo(() => {
+    // #742 sort=remaining bakes subscriptionUntilMs on row build; keep this dep
+    // so ready/soft_failed store flips rebuild rows instead of forking list vs sort.
     void subscriptionEntries;
     return buildAccountRows(
       files,

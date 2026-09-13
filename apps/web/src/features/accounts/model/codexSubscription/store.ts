@@ -11,6 +11,7 @@ type EnsureCodexSubscriptionInput = {
   authIndex: string;
   nowMs?: number;
   force?: boolean;
+  preserveReadyOnFail?: boolean;
 };
 
 interface CodexSubscriptionState {
@@ -42,7 +43,13 @@ const canRotateSoftFailedAuthIndex = (
 export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, get) => ({
   entries: {},
   getEntry: (accountId) => get().entries[accountId.trim()] ?? idleEntry(),
-  ensureFresh: async ({ accountId, authIndex, nowMs = Date.now(), force = false }) => {
+  ensureFresh: async ({
+    accountId,
+    authIndex,
+    nowMs = Date.now(),
+    force = false,
+    preserveReadyOnFail = false,
+  }) => {
     const id = accountId.trim();
     if (!id) return idleEntry();
 
@@ -66,8 +73,14 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
     const existing = inflight.get(id);
     if (existing) {
       if (!force || existing.force) return existing.promise;
-      return existing.promise.then(() =>
-        get().ensureFresh({ accountId: id, authIndex, nowMs, force: true })
+      return existing.promise.then((waited) =>
+        get().ensureFresh({
+          accountId: id,
+          authIndex,
+          nowMs,
+          force: true,
+          preserveReadyOnFail: waited.status === 'ready',
+        })
       );
     }
 
@@ -97,6 +110,7 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
           latest?.status === 'ready' ? latest : current.status === 'ready' ? current : null;
         if (
           force &&
+          preserveReadyOnFail &&
           readyCandidate &&
           nowMs - readyCandidate.record.fetchedAtMs < CODEX_SUBSCRIPTION_TTL_MS
         ) {

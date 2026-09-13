@@ -367,6 +367,45 @@ describe('codexSubscription store', () => {
     expect(getReadyCodexSubscriptionRecord(ACCOUNT_ID)?.planType).toBe('plus');
   });
 
+  it('marks soft_failed when a standalone Tab-style force refresh fails after ready', async () => {
+    vi.mocked(apiCallApi.request)
+      .mockResolvedValueOnce({
+        statusCode: 200,
+        hasStatusCode: true,
+        header: {},
+        body: successBody,
+        bodyText: JSON.stringify(successBody),
+      })
+      .mockResolvedValueOnce({
+        statusCode: 401,
+        hasStatusCode: true,
+        header: {},
+        body: { error: 'Unauthorized' },
+        bodyText: 'Unauthorized',
+      });
+
+    const ready = await ensureCodexSubscriptionFresh({
+      accountId: ACCOUNT_ID,
+      authIndex: '1',
+      nowMs: NOW_MS,
+    });
+    const forced = await ensureCodexSubscriptionFresh({
+      accountId: ACCOUNT_ID,
+      authIndex: '1',
+      nowMs: NOW_MS,
+      force: true,
+    });
+
+    expect(ready.status).toBe('ready');
+    expect(forced).toMatchObject({
+      status: 'soft_failed',
+      lastAuthIndex: '1',
+      errorKind: 'http',
+    });
+    expect(useCodexSubscriptionStore.getState().getEntry(ACCOUNT_ID).status).toBe('soft_failed');
+    expect(getReadyCodexSubscriptionRecord(ACCOUNT_ID)).toBeNull();
+  });
+
   it('stores soft_failed when there is no prior ready record', async () => {
     vi.mocked(apiCallApi.request).mockResolvedValue({
       statusCode: 500,

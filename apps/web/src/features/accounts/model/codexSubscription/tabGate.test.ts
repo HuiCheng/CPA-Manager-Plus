@@ -36,6 +36,14 @@ const makeRow = (overrides: Partial<AccountRow> = {}): AccountRow =>
   }) as AccountRow;
 
 describe('shouldShowCodexSubscriptionTab', () => {
+  beforeEach(() => {
+    useCodexSubscriptionStore.getState().clearForTests();
+  });
+
+  afterEach(() => {
+    useCodexSubscriptionStore.getState().clearForTests();
+  });
+
   it('shows the tab only for paid Codex', () => {
     expect(shouldShowCodexSubscriptionTab(makeRow())).toBe(true);
     expect(shouldShowCodexSubscriptionTab(makeRow({ planType: 'pro' }))).toBe(true);
@@ -43,6 +51,35 @@ describe('shouldShowCodexSubscriptionTab', () => {
     expect(shouldShowCodexSubscriptionTab(makeRow({ provider: 'claude', planType: 'pro' }))).toBe(
       false
     );
+  });
+
+  it('hides the tab when a ready subscriptions record is canonical free', () => {
+    useCodexSubscriptionStore.setState({
+      entries: {
+        acct_plus: {
+          status: 'ready',
+          record: {
+            accountId: 'acct_plus',
+            planType: 'free',
+            activeStartMs: null,
+            activeUntilMs: Date.parse('2099-01-01T00:00:00Z'),
+            billingPeriod: 'monthly',
+            willRenew: false,
+            fetchedAtMs: 1,
+            source: 'subscriptions',
+            extras: {
+              seatsInUse: null,
+              seatsEntitled: null,
+              isDelinquent: null,
+              gracePeriodEndMs: null,
+              discountLabel: null,
+            },
+          },
+        },
+      },
+    });
+
+    expect(shouldShowCodexSubscriptionTab(makeRow({ planType: 'plus' }))).toBe(false);
   });
 });
 
@@ -124,6 +161,48 @@ describe('collectCodexSubscriptionTargets', () => {
 
     expect(collectCodexSubscriptionTargets([shared, sibling])).toEqual([
       { accountId: 'acct_shared', authIndex: '2' },
+    ]);
+  });
+
+  it('skips already-tried authIndexes and uses a third sibling', () => {
+    const first = makeRow({
+      key: 'a',
+      selectionKey: 'a',
+      fileName: 'a.json',
+      authIndex: '1',
+      raw: { name: 'a.json', type: 'codex', chatgpt_account_id: 'acct_shared', authIndex: '1' },
+    });
+    const second = makeRow({
+      key: 'b',
+      selectionKey: 'b',
+      fileName: 'b.json',
+      authIndex: '2',
+      raw: { name: 'b.json', type: 'codex', chatgpt_account_id: 'acct_shared', authIndex: '2' },
+    });
+    const third = makeRow({
+      key: 'c',
+      selectionKey: 'c',
+      fileName: 'c.json',
+      authIndex: '3',
+      raw: { name: 'c.json', type: 'codex', chatgpt_account_id: 'acct_shared', authIndex: '3' },
+    });
+
+    useCodexSubscriptionStore.setState({
+      entries: {
+        acct_shared: {
+          status: 'soft_failed',
+          accountId: 'acct_shared',
+          failedAtMs: 1_700_000_000_000,
+          lastAttemptAtMs: 1_700_000_000_000,
+          lastAuthIndex: '2',
+          triedAuthIndexes: ['1', '2'],
+          errorKind: 'http',
+        },
+      },
+    });
+
+    expect(collectCodexSubscriptionTargets([first, second, third])).toEqual([
+      { accountId: 'acct_shared', authIndex: '3' },
     ]);
   });
 
@@ -251,5 +330,23 @@ describe('resolveCodexSubscriptionRefreshAuthIndex', () => {
     });
 
     expect(resolveCodexSubscriptionRefreshAuthIndex('acct_shared', '2', ['1', '2'])).toBe('2');
+  });
+
+  it('skips already-tried authIndexes and refreshes a third sibling', () => {
+    useCodexSubscriptionStore.setState({
+      entries: {
+        acct_shared: {
+          status: 'soft_failed',
+          accountId: 'acct_shared',
+          failedAtMs: 1,
+          lastAttemptAtMs: 1,
+          lastAuthIndex: '2',
+          triedAuthIndexes: ['1', '2'],
+          errorKind: 'http',
+        },
+      },
+    });
+
+    expect(resolveCodexSubscriptionRefreshAuthIndex('acct_shared', '1', ['1', '2', '3'])).toBe('3');
   });
 });

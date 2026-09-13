@@ -298,6 +298,43 @@ describe('accountSubscriptionPresentation', () => {
       expect(result.remainingDays).toBeNull();
     });
 
+    it('treats a ready subscriptions free plan as Free even when the local row is paid', () => {
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'ready',
+            record: {
+              accountId: 'acct_plus',
+              planType: 'free',
+              activeStartMs: null,
+              activeUntilMs: FIXED_NOW_MS + 30 * 86_400_000,
+              billingPeriod: 'monthly',
+              willRenew: false,
+              fetchedAtMs: FIXED_NOW_MS,
+              source: 'subscriptions',
+              extras: emptyCodexSubscriptionExtras(),
+            },
+          },
+        },
+      });
+
+      const result = buildAccountSubscriptionPresentation({
+        row: makeAccountRow({
+          planType: 'plus',
+          raw: {
+            name: 'codex-test.json',
+            type: 'codex',
+            chatgpt_account_id: 'acct_plus',
+          },
+        }),
+        nowMs: FIXED_NOW_MS,
+      });
+
+      expect(result.effectivePlanType).toBe('free');
+      expect(result.isPaidCodex).toBe(false);
+      expect(result.subscriptionUntilMs).toBeNull();
+    });
+
     it('does not display remainingDays for Free plan', () => {
       const futureMs = FIXED_NOW_MS + 30 * 86_400_000;
       const row = makeAccountRow({ planType: 'free' });

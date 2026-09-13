@@ -14,18 +14,16 @@ export const shouldShowCodexSubscriptionTab = (
 const canRotateFailedAuthIndex = (errorKind: string): boolean =>
   errorKind === 'http' || errorKind === 'network';
 
-const pickAuthIndexForAccount = (accountId: string, authIndexes: string[]): string => {
+const pickUntriedAuthIndex = (accountId: string, authIndexes: string[]): string | null => {
   const entry = getCodexSubscriptionEntry(accountId);
-  if (
-    entry.status === 'soft_failed' &&
-    canRotateFailedAuthIndex(entry.errorKind) &&
-    entry.lastAuthIndex
-  ) {
-    const rotated = authIndexes.find((index) => index !== entry.lastAuthIndex);
-    if (rotated) return rotated;
+  if (entry.status !== 'soft_failed' || !canRotateFailedAuthIndex(entry.errorKind)) {
+    return null;
   }
-  return authIndexes[0] ?? '';
+  return authIndexes.find((index) => !entry.triedAuthIndexes.includes(index)) ?? null;
 };
+
+const pickAuthIndexForAccount = (accountId: string, authIndexes: string[]): string =>
+  pickUntriedAuthIndex(accountId, authIndexes) ?? authIndexes[0] ?? '';
 
 export const collectCodexSubscriptionTargets = (
   rows: Array<Pick<AccountRow, 'provider' | 'planType' | 'raw' | 'authIndex'>>,
@@ -57,12 +55,12 @@ export const resolveCodexSubscriptionRefreshAuthIndex = (
   const selected = normalizeAuthIndex(selectedAuthIndex);
   if (!selected) return siblingAuthIndexes.find(Boolean) ?? '';
   const entry = getCodexSubscriptionEntry(accountId);
-  if (
+  const selectedAlreadyTried =
     entry.status === 'soft_failed' &&
     canRotateFailedAuthIndex(entry.errorKind) &&
-    entry.lastAuthIndex === selected
-  ) {
-    const rotated = siblingAuthIndexes.find((index) => index !== entry.lastAuthIndex);
+    (entry.lastAuthIndex === selected || entry.triedAuthIndexes.includes(selected));
+  if (selectedAlreadyTried) {
+    const rotated = pickUntriedAuthIndex(accountId, siblingAuthIndexes);
     if (rotated) return rotated;
   }
   return selected;

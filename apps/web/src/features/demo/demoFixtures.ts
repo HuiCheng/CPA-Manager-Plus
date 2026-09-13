@@ -7117,13 +7117,14 @@ export const getDemoApiCallResult = (payload: DemoApiCallPayload = {}) => {
         ? (matchedAuthFile.id_token as Record<string, unknown>)
         : null;
     const rawPlanType = matchedAuthFile?.plan_type ?? idToken?.plan_type;
+    const matchedPlanType =
+      typeof rawPlanType === 'string' && rawPlanType.trim()
+        ? rawPlanType.trim().toLowerCase()
+        : null;
     const rawSubscriptionActiveUntil =
       idToken?.chatgpt_subscription_active_until ?? idToken?.chatgptSubscriptionActiveUntil;
     body = {
-      plan_type:
-        typeof rawPlanType === 'string' && rawPlanType.trim()
-          ? rawPlanType.trim().toLowerCase()
-          : 'plus',
+      plan_type: matchedPlanType ?? 'free',
       active_start: new Date(now() - 8 * day).toISOString(),
       active_until:
         typeof rawSubscriptionActiveUntil === 'string' ||

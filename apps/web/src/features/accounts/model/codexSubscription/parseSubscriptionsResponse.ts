@@ -49,7 +49,19 @@ const unwrapSubscriptionPayload = (
   const record = asRecord(payload);
   if (!record) return null;
 
-  const nested = record.subscription ?? record.subscriptions;
+  const singular = record.subscription;
+  const plural = record.subscriptions;
+  if (Array.isArray(plural)) {
+    const matched = unwrapSubscriptionPayload(plural, accountId);
+    if (matched) return matched;
+    const sibling = asRecord(singular);
+    if (sibling && readPayloadAccountId(sibling) === accountId) {
+      return unwrapSubscriptionPayload(sibling, accountId);
+    }
+    return null;
+  }
+
+  const nested = singular ?? plural;
   if (nested !== undefined) {
     const parentAccountId = readPayloadAccountId(record);
     if (!Array.isArray(nested) && parentAccountId !== null && parentAccountId !== accountId) {
