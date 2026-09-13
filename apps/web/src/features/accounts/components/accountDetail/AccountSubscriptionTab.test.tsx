@@ -96,7 +96,8 @@ describe('AccountSubscriptionTab', () => {
     expect(text).not.toMatch(/(^|[^A-Za-z])pro([^A-Za-z]|$)/);
     const untilStamp = formatQuotaResetTimestamp(untilMs, 'en-US');
     expect(text).toContain(untilStamp);
-    expect(text).toContain('accounts.list_plan_remaining_days');
+    expect(text).not.toContain('accounts.list_plan_remaining_days:');
+    expect(text).toContain('accounts.list_plan_remaining_days_tooltip');
     expect(text).not.toContain(`${untilStamp} ·`);
     expect(text).toContain('common.yes');
     expect(text).toContain('accounts.detail_subscription_billing_monthly');
