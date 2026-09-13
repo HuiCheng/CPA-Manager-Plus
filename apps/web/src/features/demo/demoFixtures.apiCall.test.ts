@@ -26,6 +26,38 @@ describe('API call demo fixtures', () => {
     expect(result.body).toBe(JSON.stringify({ error: { code: 16, message: 'Forbidden' } }));
   });
 
+  it('returns ChatGPT subscriptions JSON for paid Codex demo credentials', () => {
+    const result = getDemoApiCallResult({
+      authIndex: 'codex-pro-20x-01',
+      method: 'GET',
+      url: 'https://chatgpt.com/backend-api/subscriptions?account_id=acct_codex_pro_20x',
+    });
+
+    expect(result.status_code).toBe(200);
+    expect(result.body).toMatchObject({
+      plan_type: 'pro',
+      billing_period: 'monthly',
+      will_renew: true,
+    });
+    expect(result.body).toHaveProperty('active_until');
+  });
+
+  it('does not invent plus when the demo subscriptions plan is missing or unpaid', () => {
+    const unpaid = getDemoApiCallResult({
+      authIndex: 'codex-upgrade-demo-01',
+      method: 'GET',
+      url: 'https://chatgpt.com/backend-api/subscriptions?account_id=acct_codex_upgrade_demo',
+    });
+    const unknown = getDemoApiCallResult({
+      authIndex: 'missing-auth-index',
+      method: 'GET',
+      url: 'https://chatgpt.com/backend-api/subscriptions?account_id=acct_unknown',
+    });
+
+    expect(unpaid.body).toMatchObject({ plan_type: 'free' });
+    expect(unknown.body).toMatchObject({ plan_type: 'free' });
+  });
+
   it('keeps ordinary API calls successful', () => {
     const result = getDemoApiCallResult({
       method: 'POST',

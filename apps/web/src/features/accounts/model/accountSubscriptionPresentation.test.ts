@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AccountRow } from './accountRows';
+import { buildAccountRows } from './accountRows';
 import type { CodexQuotaState } from '@/types';
+import {
+  emptyCodexSubscriptionExtras,
+  useCodexSubscriptionStore,
+  type CodexSubscriptionRecord,
+} from './codexSubscription';
 import {
   buildAccountSubscriptionPresentation,
   parseValidSubscriptionUntilMs,
@@ -53,6 +59,14 @@ const makeCodexQuota = (overrides: Record<string, unknown> = {}): CodexQuotaStat
 
 describe('accountSubscriptionPresentation', () => {
   const FIXED_NOW_MS = 1_700_000_000_000; // e.g. base now
+
+  beforeEach(() => {
+    useCodexSubscriptionStore.getState().clearForTests();
+  });
+
+  afterEach(() => {
+    useCodexSubscriptionStore.getState().clearForTests();
+  });
 
   describe('parseValidSubscriptionUntilMs', () => {
     it('supports seconds epoch (< 1e12)', () => {
@@ -129,6 +143,113 @@ describe('accountSubscriptionPresentation', () => {
       expect(result.subscriptionUntilMs).toBe(1_750_000_000_000);
     });
 
+    it('prioritizes subscriptions.activeUntilMs over wham and JWT', () => {
+      const row = makeAccountRow({
+        raw: {
+          name: 'codex-test.json',
+          type: 'codex',
+          id_token: `header.${btoa(JSON.stringify({ chatgpt_subscription_active_until: 1_600_000_000 }))}.sig`,
+        },
+      });
+      const quota = makeCodexQuota({
+        planType: 'plus',
+        subscriptionActiveUntil: 1_700_000_000,
+      });
+      const subscriptionsRecord: CodexSubscriptionRecord = {
+        accountId: 'acct_plus',
+        planType: 'plus',
+        activeStartMs: 1_750_000_000_000,
+        activeUntilMs: 1_800_000_000_000,
+        billingPeriod: 'monthly',
+        willRenew: true,
+        fetchedAtMs: FIXED_NOW_MS,
+        source: 'subscriptions',
+        extras: emptyCodexSubscriptionExtras(),
+      };
+      const result = resolveCodexSubscriptionUntilMs(row, quota, subscriptionsRecord);
+      expect(result.liveSubscriptionUntilMs).toBe(1_800_000_000_000);
+      expect(result.tokenSubscriptionUntilMs).toBe(1_600_000_000_000);
+      expect(result.subscriptionUntilMs).toBe(1_800_000_000_000);
+    });
+
+    it('prefers a ready store record when subscriptionsRecord is omitted', () => {
+      const row = makeAccountRow({
+        raw: {
+          name: 'codex-test.json',
+          type: 'codex',
+          chatgpt_account_id: 'acct_plus',
+          id_token: `header.${btoa(JSON.stringify({ chatgpt_subscription_active_until: 1_600_000_000 }))}.sig`,
+        },
+      });
+      const quota = makeCodexQuota({
+        planType: 'plus',
+        subscriptionActiveUntil: 1_700_000_000,
+      });
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'ready',
+            record: {
+              accountId: 'acct_plus',
+              planType: 'plus',
+              activeStartMs: 1_750_000_000_000,
+              activeUntilMs: 1_800_000_000_000,
+              billingPeriod: 'monthly',
+              willRenew: true,
+              fetchedAtMs: FIXED_NOW_MS,
+              source: 'subscriptions',
+              extras: emptyCodexSubscriptionExtras(),
+            },
+          },
+        },
+      });
+
+      const resolved = resolveCodexSubscriptionUntilMs(row, quota);
+      const presentation = buildAccountSubscriptionPresentation({
+        row,
+        codexQuota: quota,
+        nowMs: FIXED_NOW_MS,
+      });
+
+      expect(resolved.liveSubscriptionUntilMs).toBe(1_800_000_000_000);
+      expect(resolved.subscriptionUntilMs).toBe(1_800_000_000_000);
+      expect(presentation.subscriptionUntilMs).toBe(1_800_000_000_000);
+      expect(presentation.remainingDays).toBe(
+        Math.max(1, Math.ceil((1_800_000_000_000 - FIXED_NOW_MS) / 86_400_000))
+      );
+    });
+
+    it('does not use a soft_failed store entry when subscriptionsRecord is omitted', () => {
+      const row = makeAccountRow({
+        raw: {
+          name: 'codex-test.json',
+          type: 'codex',
+          chatgpt_account_id: 'acct_plus',
+        },
+      });
+      const quota = makeCodexQuota({
+        planType: 'plus',
+        subscriptionActiveUntil: 1_700_000_000,
+      });
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'soft_failed',
+            accountId: 'acct_plus',
+            failedAtMs: FIXED_NOW_MS,
+            lastAttemptAtMs: FIXED_NOW_MS,
+            lastAuthIndex: '1',
+            triedAuthIndexes: ['1'],
+            errorKind: 'http',
+          },
+        },
+      });
+
+      const result = resolveCodexSubscriptionUntilMs(row, quota);
+      expect(result.liveSubscriptionUntilMs).toBe(1_700_000_000_000);
+      expect(result.subscriptionUntilMs).toBe(1_700_000_000_000);
+    });
+
     it('returns all nulls for non-Codex provider', () => {
       const row = makeAccountRow({ provider: 'claude' });
       const quota = makeCodexQuota({
@@ -177,6 +298,43 @@ describe('accountSubscriptionPresentation', () => {
       expect(result.remainingDays).toBeNull();
     });
 
+    it('treats a ready subscriptions free plan as Free even when the local row is paid', () => {
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'ready',
+            record: {
+              accountId: 'acct_plus',
+              planType: 'free',
+              activeStartMs: null,
+              activeUntilMs: FIXED_NOW_MS + 30 * 86_400_000,
+              billingPeriod: 'monthly',
+              willRenew: false,
+              fetchedAtMs: FIXED_NOW_MS,
+              source: 'subscriptions',
+              extras: emptyCodexSubscriptionExtras(),
+            },
+          },
+        },
+      });
+
+      const result = buildAccountSubscriptionPresentation({
+        row: makeAccountRow({
+          planType: 'plus',
+          raw: {
+            name: 'codex-test.json',
+            type: 'codex',
+            chatgpt_account_id: 'acct_plus',
+          },
+        }),
+        nowMs: FIXED_NOW_MS,
+      });
+
+      expect(result.effectivePlanType).toBe('free');
+      expect(result.isPaidCodex).toBe(false);
+      expect(result.subscriptionUntilMs).toBeNull();
+    });
+
     it('does not display remainingDays for Free plan', () => {
       const futureMs = FIXED_NOW_MS + 30 * 86_400_000;
       const row = makeAccountRow({ planType: 'free' });
@@ -212,6 +370,32 @@ describe('accountSubscriptionPresentation', () => {
       expect(result.remainingDays).toBeNull();
     });
 
+    it('uses subscriptions remainingDays for list and sort consumers', () => {
+      const subscriptionsUntil = FIXED_NOW_MS + 11 * 86_400_000;
+      const result = buildAccountSubscriptionPresentation({
+        row: makeAccountRow(),
+        codexQuota: makeCodexQuota({
+          planType: 'plus',
+          subscriptionActiveUntil: FIXED_NOW_MS + 3 * 86_400_000,
+        }),
+        subscriptionsRecord: {
+          accountId: 'acct_plus',
+          planType: 'plus',
+          activeStartMs: FIXED_NOW_MS - 20 * 86_400_000,
+          activeUntilMs: subscriptionsUntil,
+          billingPeriod: 'monthly',
+          willRenew: true,
+          fetchedAtMs: FIXED_NOW_MS,
+          source: 'subscriptions',
+          extras: emptyCodexSubscriptionExtras(),
+        },
+        nowMs: FIXED_NOW_MS,
+      });
+
+      expect(result.subscriptionUntilMs).toBe(subscriptionsUntil);
+      expect(result.remainingDays).toBe(11);
+    });
+
     it('does not display remainingDays for non-Codex provider', () => {
       const row = makeAccountRow({ provider: 'claude', planType: 'pro' });
       const result = buildAccountSubscriptionPresentation({
@@ -221,6 +405,66 @@ describe('accountSubscriptionPresentation', () => {
 
       expect(result.isPaidCodex).toBe(false);
       expect(result.remainingDays).toBeNull();
+    });
+
+    it('picks subscriptions until via auto-lookup after rows rebuild once the store is ready', () => {
+      const files = [
+        {
+          name: 'codex-plus.json',
+          type: 'codex',
+          chatgpt_account_id: 'acct_plus',
+          planType: 'plus',
+          authIndex: '1',
+        },
+      ];
+      const stores = {
+        antigravityQuota: {},
+        claudeQuota: {},
+        codexQuota: {},
+        kimiQuota: {},
+        xaiQuota: {},
+      };
+      const quota = makeCodexQuota({
+        planType: 'plus',
+        subscriptionActiveUntil: 1_700_000_000,
+      });
+
+      const rowsBefore = buildAccountRows(files, stores);
+      expect(
+        buildAccountSubscriptionPresentation({
+          row: rowsBefore[0],
+          codexQuota: quota,
+          nowMs: FIXED_NOW_MS,
+        }).subscriptionUntilMs
+      ).toBe(1_700_000_000_000);
+
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'ready',
+            record: {
+              accountId: 'acct_plus',
+              planType: 'plus',
+              activeStartMs: FIXED_NOW_MS,
+              activeUntilMs: 1_800_000_000_000,
+              billingPeriod: 'monthly',
+              willRenew: true,
+              fetchedAtMs: FIXED_NOW_MS,
+              source: 'subscriptions',
+              extras: emptyCodexSubscriptionExtras(),
+            },
+          },
+        },
+      });
+
+      const rowsAfter = buildAccountRows(files, stores);
+      expect(
+        buildAccountSubscriptionPresentation({
+          row: rowsAfter[0],
+          codexQuota: quota,
+          nowMs: FIXED_NOW_MS,
+        }).subscriptionUntilMs
+      ).toBe(1_800_000_000_000);
     });
   });
 });
