@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AccountRow } from './accountRows';
+import { buildAccountRows } from './accountRows';
 import type { CodexQuotaState } from '@/types';
 import {
   emptyCodexSubscriptionExtras,
@@ -367,6 +368,66 @@ describe('accountSubscriptionPresentation', () => {
 
       expect(result.isPaidCodex).toBe(false);
       expect(result.remainingDays).toBeNull();
+    });
+
+    it('picks subscriptions until via auto-lookup after rows rebuild once the store is ready', () => {
+      const files = [
+        {
+          name: 'codex-plus.json',
+          type: 'codex',
+          chatgpt_account_id: 'acct_plus',
+          planType: 'plus',
+          authIndex: '1',
+        },
+      ];
+      const stores = {
+        antigravityQuota: {},
+        claudeQuota: {},
+        codexQuota: {},
+        kimiQuota: {},
+        xaiQuota: {},
+      };
+      const quota = makeCodexQuota({
+        planType: 'plus',
+        subscriptionActiveUntil: 1_700_000_000,
+      });
+
+      const rowsBefore = buildAccountRows(files, stores);
+      expect(
+        buildAccountSubscriptionPresentation({
+          row: rowsBefore[0],
+          codexQuota: quota,
+          nowMs: FIXED_NOW_MS,
+        }).subscriptionUntilMs
+      ).toBe(1_700_000_000_000);
+
+      useCodexSubscriptionStore.setState({
+        entries: {
+          acct_plus: {
+            status: 'ready',
+            record: {
+              accountId: 'acct_plus',
+              planType: 'plus',
+              activeStartMs: FIXED_NOW_MS,
+              activeUntilMs: 1_800_000_000_000,
+              billingPeriod: 'monthly',
+              willRenew: true,
+              fetchedAtMs: FIXED_NOW_MS,
+              source: 'subscriptions',
+              extras: emptyCodexSubscriptionExtras(),
+            },
+          },
+        },
+      });
+
+      const rowsAfter = buildAccountRows(files, stores);
+      expect(
+        buildAccountSubscriptionPresentation({
+          row: rowsAfter[0],
+          codexQuota: quota,
+          nowMs: FIXED_NOW_MS,
+        }).subscriptionUntilMs
+      ).toBe(1_800_000_000_000);
     });
   });
 });

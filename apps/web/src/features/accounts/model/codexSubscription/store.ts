@@ -92,6 +92,16 @@ export const useCodexSubscriptionStore = create<CodexSubscriptionState>((set, ge
         }));
         return ready;
       } catch (error) {
+        const latest = get().entries[id];
+        const readyCandidate =
+          latest?.status === 'ready' ? latest : current.status === 'ready' ? current : null;
+        if (
+          force &&
+          readyCandidate &&
+          nowMs - readyCandidate.record.fetchedAtMs < CODEX_SUBSCRIPTION_TTL_MS
+        ) {
+          return readyCandidate;
+        }
         const carryTried =
           current.status === 'soft_failed' && isRetryCooldownActive(current, nowMs)
             ? current.triedAuthIndexes

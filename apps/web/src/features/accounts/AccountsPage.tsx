@@ -224,8 +224,9 @@ import {
 } from '@/features/accounts/model/accountsPagePresentation';
 import { buildAccountSubscriptionPresentation } from '@/features/accounts/model/accountSubscriptionPresentation';
 import {
-  collectCodexSubscriptionTargets,
   ensureCodexSubscriptionFresh,
+  ensureCodexSubscriptionTargetsFresh,
+  resolveCodexSubscriptionRefreshAuthIndex,
   shouldShowCodexSubscriptionTab,
   useCodexSubscriptionStore,
 } from '@/features/accounts/model/codexSubscription';
@@ -3992,27 +3993,27 @@ export function AccountsPage() {
     return { codexQuotaBySelectionKey, codexHeaderSnapshotBySelectionKey };
   }, [files, getDisplayCodexHeaderSnapshot, getDisplayCodexQuota]);
 
-  const rows = useMemo(
-    () =>
-      buildAccountRows(
-        files,
-        baseQuotaStores,
-        effectiveInspectionResults,
-        accountQuotaOverrides,
-        freshAccountInspectionBySelectionKey,
-        credentialEvidenceBoundariesBySelectionKey,
-        credentialStatusBoundaries
-      ),
-    [
-      accountQuotaOverrides,
-      baseQuotaStores,
+  const rows = useMemo(() => {
+    void subscriptionEntries;
+    return buildAccountRows(
       files,
-      credentialEvidenceBoundariesBySelectionKey,
-      credentialStatusBoundaries,
+      baseQuotaStores,
       effectiveInspectionResults,
+      accountQuotaOverrides,
       freshAccountInspectionBySelectionKey,
-    ]
-  );
+      credentialEvidenceBoundariesBySelectionKey,
+      credentialStatusBoundaries
+    );
+  }, [
+    accountQuotaOverrides,
+    baseQuotaStores,
+    files,
+    credentialEvidenceBoundariesBySelectionKey,
+    credentialStatusBoundaries,
+    effectiveInspectionResults,
+    freshAccountInspectionBySelectionKey,
+    subscriptionEntries,
+  ]);
   const codexStatusBySelectionKey = useMemo(() => {
     const statusMap = new Map<string, ReturnType<typeof getAuthFileCodexStatus>>();
     rows.forEach((row) => {
@@ -4371,13 +4372,10 @@ export function AccountsPage() {
     [rows, selectedRowKey]
   );
   useEffect(() => {
-    const targets = collectCodexSubscriptionTargets(filteredRows, (row) =>
+    ensureCodexSubscriptionTargetsFresh(filteredRows, (row) =>
       row.provider === CODEX_CONFIG.type ? getActiveCodexQuota(row.raw) : undefined
     );
-    targets.forEach((target) => {
-      void ensureCodexSubscriptionFresh(target);
-    });
-  }, [filteredRows, getActiveCodexQuota]);
+  }, [filteredRows, getActiveCodexQuota, subscriptionEntries]);
   const accountHistoryTargets = useMemo(() => buildAccountHistoryTargetEntries(rows), [rows]);
   const accountHistoryAutoContextKey = useMemo(
     () =>
@@ -9592,7 +9590,24 @@ export function AccountsPage() {
             refreshing={subscriptionRefreshing || selectedSubscriptionEntry.status === 'loading'}
             onRefresh={() => {
               if (!selectedSubscriptionAccountId) return;
-              const authIndex = normalizeAuthIndex(selectedRow.authIndex);
+              const siblingAuthIndexes = [
+                ...new Set(
+                  filteredRows
+                    .filter(
+                      (row) =>
+                        resolveCodexChatgptAccountId(row.raw) === selectedSubscriptionAccountId
+                    )
+                    .map((row) =>
+                      normalizeAuthIndex(row.authIndex ?? row.raw.auth_index ?? row.raw.authIndex)
+                    )
+                    .filter((index): index is string => Boolean(index))
+                ),
+              ];
+              const authIndex = resolveCodexSubscriptionRefreshAuthIndex(
+                selectedSubscriptionAccountId,
+                selectedRow.authIndex ?? '',
+                siblingAuthIndexes
+              );
               if (!authIndex) return;
               setSubscriptionRefreshing(true);
               void ensureCodexSubscriptionFresh({

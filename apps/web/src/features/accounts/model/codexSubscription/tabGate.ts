@@ -3,7 +3,8 @@ import type { AccountRow } from '@/features/accounts/model/accountRows';
 import { buildAccountSubscriptionPresentation } from '@/features/accounts/model/accountSubscriptionPresentation';
 import { normalizeAuthIndex } from '@/utils/quota/parsers';
 import { resolveCodexChatgptAccountId } from '@/utils/quota/resolvers';
-import { getCodexSubscriptionEntry } from './store';
+import { ensureCodexSubscriptionFresh, getCodexSubscriptionEntry } from './store';
+import type { CodexSubscriptionEntry } from './types';
 
 export const shouldShowCodexSubscriptionTab = (
   row: Pick<AccountRow, 'provider' | 'planType' | 'raw'>,
@@ -46,4 +47,34 @@ export const collectCodexSubscriptionTargets = (
     accountId,
     authIndex: pickAuthIndexForAccount(accountId, authIndexes),
   }));
+};
+
+export const resolveCodexSubscriptionRefreshAuthIndex = (
+  accountId: string,
+  selectedAuthIndex: string,
+  siblingAuthIndexes: string[]
+): string => {
+  const selected = normalizeAuthIndex(selectedAuthIndex);
+  if (!selected) return siblingAuthIndexes.find(Boolean) ?? '';
+  const entry = getCodexSubscriptionEntry(accountId);
+  if (
+    entry.status === 'soft_failed' &&
+    canRotateFailedAuthIndex(entry.errorKind) &&
+    entry.lastAuthIndex === selected
+  ) {
+    const rotated = siblingAuthIndexes.find((index) => index !== entry.lastAuthIndex);
+    if (rotated) return rotated;
+  }
+  return selected;
+};
+
+export const ensureCodexSubscriptionTargetsFresh = (
+  rows: Array<Pick<AccountRow, 'provider' | 'planType' | 'raw' | 'authIndex'>>,
+  resolveQuota?: (
+    row: Pick<AccountRow, 'provider' | 'planType' | 'raw'>
+  ) => CodexQuotaState | null | undefined,
+  input?: { nowMs?: number; force?: boolean }
+): Promise<CodexSubscriptionEntry>[] => {
+  const targets = collectCodexSubscriptionTargets(rows, resolveQuota);
+  return targets.map((target) => ensureCodexSubscriptionFresh({ ...target, ...input }));
 };

@@ -19,6 +19,11 @@ const normalizeBooleanValue = (value: unknown): boolean | null => {
   return null;
 };
 
+const readPayloadAccountId = (record: Record<string, unknown>): string | null =>
+  normalizeStringValue(
+    record.account_id ?? record.accountId ?? record.chatgpt_account_id ?? record.chatgptAccountId
+  );
+
 const unwrapSubscriptionPayload = (
   payload: unknown,
   accountId: string
@@ -37,12 +42,7 @@ const unwrapSubscriptionPayload = (
     const records = payload
       .map(asRecord)
       .filter((item): item is Record<string, unknown> => item !== null);
-    const matched = records.find((item) => {
-      const candidate = normalizeStringValue(
-        item.account_id ?? item.accountId ?? item.chatgpt_account_id ?? item.chatgptAccountId
-      );
-      return candidate === accountId;
-    });
+    const matched = records.find((item) => readPayloadAccountId(item) === accountId);
     return matched ?? null;
   }
 
@@ -51,7 +51,12 @@ const unwrapSubscriptionPayload = (
 
   const nested = record.subscription ?? record.subscriptions;
   if (nested !== undefined) {
-    return unwrapSubscriptionPayload(nested, accountId) ?? record;
+    return unwrapSubscriptionPayload(nested, accountId);
+  }
+
+  const recordAccountId = readPayloadAccountId(record);
+  if (recordAccountId !== null && recordAccountId !== accountId) {
+    return null;
   }
   return record;
 };

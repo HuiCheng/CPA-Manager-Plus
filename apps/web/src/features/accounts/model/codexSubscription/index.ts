@@ -21,7 +21,12 @@ export {
   getReadyCodexSubscriptionRecord,
   useCodexSubscriptionStore,
 } from './store';
-export { collectCodexSubscriptionTargets, shouldShowCodexSubscriptionTab } from './tabGate';
+export {
+  collectCodexSubscriptionTargets,
+  ensureCodexSubscriptionTargetsFresh,
+  resolveCodexSubscriptionRefreshAuthIndex,
+  shouldShowCodexSubscriptionTab,
+} from './tabGate';
 export {
   buildCodexSubscriptionDetailFields,
   buildCodexSubscriptionSecondaryFields,

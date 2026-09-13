@@ -322,6 +322,51 @@ describe('codexSubscription store', () => {
     }
   });
 
+  it('keeps a fresh ready record when a chained force soft-fails', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    const pending = new Promise((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(apiCallApi.request)
+      .mockImplementationOnce(async () => {
+        await pending;
+        return {
+          statusCode: 200,
+          hasStatusCode: true,
+          header: {},
+          body: successBody,
+          bodyText: JSON.stringify(successBody),
+        };
+      })
+      .mockResolvedValueOnce({
+        statusCode: 401,
+        hasStatusCode: true,
+        header: {},
+        body: { error: 'Unauthorized' },
+        bodyText: 'Unauthorized',
+      });
+
+    const first = ensureCodexSubscriptionFresh({
+      accountId: ACCOUNT_ID,
+      authIndex: '1',
+      nowMs: NOW_MS,
+    });
+    const forced = ensureCodexSubscriptionFresh({
+      accountId: ACCOUNT_ID,
+      authIndex: '1',
+      nowMs: NOW_MS,
+      force: true,
+    });
+    release(undefined);
+
+    const [firstEntry, forcedEntry] = await Promise.all([first, forced]);
+    expect(apiCallApi.request).toHaveBeenCalledTimes(2);
+    expect(firstEntry.status).toBe('ready');
+    expect(forcedEntry.status).toBe('ready');
+    expect(useCodexSubscriptionStore.getState().getEntry(ACCOUNT_ID).status).toBe('ready');
+    expect(getReadyCodexSubscriptionRecord(ACCOUNT_ID)?.planType).toBe('plus');
+  });
+
   it('stores soft_failed when there is no prior ready record', async () => {
     vi.mocked(apiCallApi.request).mockResolvedValue({
       statusCode: 500,

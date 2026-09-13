@@ -70,6 +70,53 @@ describe('parseSubscriptionsResponse', () => {
     expect(record?.activeUntilMs).toBe(Date.parse('2026-08-01T00:00:00Z'));
   });
 
+  it('returns null when a top-level object belongs to another account', () => {
+    expect(
+      parseSubscriptionsResponse(
+        {
+          account_id: 'acct_A',
+          plan_type: 'plus',
+          active_until: '2026-01-01T00:00:00Z',
+        },
+        'acct_B',
+        FETCHED_AT
+      )
+    ).toBeNull();
+  });
+
+  it('returns null when a nested object belongs to another account', () => {
+    expect(
+      parseSubscriptionsResponse(
+        {
+          subscription: {
+            account_id: 'acct_A',
+            plan_type: 'plus',
+            active_until: '2026-01-01T00:00:00Z',
+          },
+        },
+        'acct_B',
+        FETCHED_AT
+      )
+    ).toBeNull();
+  });
+
+  it('returns null when a nested array misses the requested account', () => {
+    expect(
+      parseSubscriptionsResponse(
+        {
+          plan_type: 'plus',
+          active_until: '2026-06-10T02:52:15Z',
+          subscriptions: [
+            { account_id: 'acct_A', plan_type: 'plus', active_until: '2026-01-01T00:00:00Z' },
+            { account_id: 'acct_B', plan_type: 'pro', active_until: '2026-08-01T00:00:00Z' },
+          ],
+        },
+        'acct_missing',
+        FETCHED_AT
+      )
+    ).toBeNull();
+  });
+
   it('returns null when the requested account is missing from an array payload', () => {
     const payload = [
       { account_id: 'acct_A', plan_type: 'plus', active_until: '2026-01-01T00:00:00Z' },
